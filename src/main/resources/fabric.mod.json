@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "id": "viabridge",
+  "version": "${version}",
+  "name": "ViaBridge",
+  "description": "Lets a Minecraft 1.21.4 client join newer servers (1.21.11 and friends) with nothing installed server-side.",
+  "license": "GPL-3.0-or-later",
+  "environment": "client",
+  "authors": [
+    "ViaBridge contributors"
+  ],
+  "contact": {
+    "sources": "https://github.com/Poezeloezewoefke1/Idk"
+  },
+
+  "//": "The bundled ViaVersion and ViaBackwards jars both declare a dependency on a mod called 'viafabric', and ViaBackwards registers its protocols through the 'viafabric:via_api_initialized' entrypoint. Providing that id is what lets those jars load and initialise inside this mod.",
+  "provides": [
+    "viafabric"
+  ],
+
+  "entrypoints": {
+    "main": [
+      "dev.viabridge.ViaBridge"
+    ]
+  },
+
+  "mixins": [
+    {
+      "config": "viabridge.mixins.json",
+      "environment": "client"
+    }
+  ],
+
+  "depends": {
+    "minecraft": "~1.21.4",
+    "fabricloader": ">=0.16.0",
+    "java": ">=21"
+  }
+}
