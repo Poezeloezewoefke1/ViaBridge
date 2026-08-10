@@ -75,16 +75,14 @@ Via's own tunables live separately in `config/viabridge/viaversion.yml`.
 
 ## Status and limitations
 
-**This has not been compiled or run.** It was written in an environment whose egress
-policy blocks all four repositories the build needs, so Gradle could not resolve Loom, the
-Minecraft artifacts, or the Via libraries. The sources parse cleanly (checked with
-`javac`; the only errors are unresolved external symbols), and the architecture is modelled
-directly on upstream ViaFabric, but **first build and first launch should be treated as
-unverified**. Expect to iterate.
+**Builds clean; not yet run in-game.** CI compiles the mod against Minecraft 1.21.4 and
+asserts that the produced jar bundles both Via libraries, that the metadata provides
+`viafabric`, and that the mod's own classes are present. That covers compilation, mixin
+target resolution and packaging.
 
-The one item most likely to need adjustment is the `channelActive` injection point in
-`mixin/MixinConnection.java` — if Mixin reports the target method was not found on 1.21.4,
-that is where to look.
+What it does not cover is a real session against a live 1.21.11 server. **The first launch
+should still be treated as unverified** — start the client, check the log for the
+`ViaBridge ready` line, and join a server.
 
 Beyond that, some limits are inherent to cross-version play rather than bugs here:
 
@@ -98,7 +96,8 @@ Beyond that, some limits are inherent to cross-version play rather than bugs her
   resource-pack gating, some login plugins) may still reject the connection.
 
 Keep `viaversion_version` and `viabackwards_version` in `gradle.properties` on the same
-release line, and bump both when Via publishes support for a newer server version.
+release line, and bump both when Via publishes support for a newer server version. Note
+that `5.11.1` exists only as a rolling `-SNAPSHOT`, never as a release — pin releases.
 
 ## Licensing
 
