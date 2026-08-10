@@ -24,23 +24,47 @@ jobs:
       - name: Build
         run: ./gradlew build --stacktrace
 
-      # Proves the two things that cannot be checked by compiling alone: that the Via
-      # libraries were actually nested into the jar, and which versions resolved.
+      # Compiling proves the sources are valid. It does not prove the Via libraries were
+      # bundled into the jar, which is what makes the mod self-contained — so assert it
+      # here rather than just printing it, and fail the build if it regresses.
       - name: Verify jar contents
+        id: verify
         run: |
+          set -euo pipefail
           jar=$(ls build/libs/viabridge-*.jar | grep -v sources | head -1)
-          echo "=== $jar"
-          echo "--- nested jars (jar-in-jar):"
-          unzip -l "$jar" | grep -E "META-INF/jars/.+\.jar" || echo "NONE FOUND"
-          echo "--- our classes:"
-          unzip -l "$jar" | grep -cE "dev/viabridge/.+\.class" | xargs echo "class count:"
-          echo "--- fabric.mod.json:"
-          unzip -p "$jar" fabric.mod.json
+          nested=$(unzip -l "$jar" | grep -oE "META-INF/jars/[^[:space:]]+\.jar" || true)
 
+          echo "$nested"
+          echo "$nested" | grep -q viaversion   || { echo "::error::viaversion was not nested into the jar";   exit 1; }
+          echo "$nested" | grep -q viabackwards || { echo "::error::viabackwards was not nested into the jar"; exit 1; }
+
+          # Both nested jars declare a dependency on a mod called 'viafabric'; without
+          # this they are refused by the loader at runtime.
+          unzip -p "$jar" fabric.mod.json | grep -q '"viafabric"' \
+            || { echo "::error::fabric.mod.json is missing provides: viafabric"; exit 1; }
+
+          classes=$(unzip -l "$jar" | grep -cE "dev/viabridge/.+\.class")
+          [ "$classes" -ge 10 ] || { echo "::error::only $classes mod classes in the jar"; exit 1; }
+
+          via=$(echo "$nested" | grep -oE "viaversion-[0-9][^/]*\.jar$" \
+                | sed 's/viaversion-//; s/\.jar//' | head -1)
+          echo "viaversion=$via" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Jar verified"
+            echo ""
+            echo "\`$classes\` mod classes, nested libraries:"
+            echo '```'
+            echo "$nested"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The resolved Via version is carried in the artifact name so it is visible without
+      # digging through logs.
       - name: Upload mod jar
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: viabridge
+          name: viabridge-via${{ steps.verify.outputs.viaversion }}
           path: build/libs/*.jar
           if-no-files-found: error
