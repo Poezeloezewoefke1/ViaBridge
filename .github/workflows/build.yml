@@ -7,6 +7,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Tag to release as (e.g. v1.0.0). Leave empty to only build."
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -79,10 +84,13 @@ jobs:
       # Tag builds also publish a release. Marked as a prerelease: the jar is verified to
       # compile and package correctly, but has not been played against a live server.
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: >-
+          startsWith(github.ref, 'refs/tags/v') ||
+          (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+          TARGET: ${{ github.sha }}
         run: |
           set -euo pipefail
           jar=$(ls build/libs/viabridge-*.jar | grep -v sources | head -1)
@@ -110,7 +118,9 @@ jobs:
           EOF
           )
 
+          # --target creates the tag server-side when it does not already exist.
           gh release create "$TAG" "$jar" \
+            --target "$TARGET" \
             --title "ViaBridge $TAG" \
             --notes "$notes" \
             --prerelease
