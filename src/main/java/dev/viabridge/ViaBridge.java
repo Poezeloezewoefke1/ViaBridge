@@ -82,5 +82,37 @@ public final class ViaBridge implements ModInitializer {
             + BridgeSettings.NATIVE_PROTOCOL + " (1.21.4), default target "
             + settings.targetVersion() + ", auto-detect "
             + (settings.autoDetect() ? "on" : "off"));
+
+        verifyTranslationPath();
+    }
+
+    /**
+     * Confirms a translation path to the configured target actually exists.
+     *
+     * <p>Worth doing because the failure it catches is otherwise silent: if ViaBackwards
+     * declines to load, Via still starts and reports itself healthy, but there is no route
+     * from 1.21.4 to anything newer. The client then introduces itself with its own
+     * version and the server rejects it as outdated — with nothing in the log connecting
+     * that back to the real cause.
+     */
+    private static void verifyTranslationPath() {
+        final int target = settings.targetVersion().getOriginalVersion();
+        if (target == BridgeSettings.NATIVE_PROTOCOL) {
+            return;
+        }
+
+        if (Via.getManager().getProtocolManager()
+            .getProtocolPath(BridgeSettings.NATIVE_PROTOCOL, target) != null) {
+            return;
+        }
+
+        LOGGER.severe("=================================================");
+        LOGGER.severe("NO TRANSLATION PATH from protocol "
+            + BridgeSettings.NATIVE_PROTOCOL + " to " + settings.targetVersion());
+        LOGGER.severe("Connections will be sent as plain 1.21.4 and servers will");
+        LOGGER.severe("reject them as an outdated client.");
+        LOGGER.severe("ViaBackwards is what provides this path - check the log above");
+        LOGGER.severe("for it refusing to load.");
+        LOGGER.severe("=================================================");
     }
 }

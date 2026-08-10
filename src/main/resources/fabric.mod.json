@@ -13,7 +13,6 @@
     "sources": "https://github.com/Poezeloezewoefke1/Idk"
   },
 
-  "//": "The bundled ViaVersion and ViaBackwards jars both declare a dependency on a mod called 'viafabric', and ViaBackwards registers its protocols through the 'viafabric:via_api_initialized' entrypoint. Providing that id is what lets those jars load and initialise inside this mod.",
   "provides": [
     "viafabric"
   ],
