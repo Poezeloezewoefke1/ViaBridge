@@ -21,15 +21,21 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Report resolved Via versions
-        run: |
-          ./gradlew -q dependencyInsight --configuration compileClasspath \
-            --dependency com.viaversion:viaversion || true
-          ./gradlew -q dependencyInsight --configuration compileClasspath \
-            --dependency com.viaversion:viabackwards || true
-
       - name: Build
         run: ./gradlew build --stacktrace
+
+      # Proves the two things that cannot be checked by compiling alone: that the Via
+      # libraries were actually nested into the jar, and which versions resolved.
+      - name: Verify jar contents
+        run: |
+          jar=$(ls build/libs/viabridge-*.jar | grep -v sources | head -1)
+          echo "=== $jar"
+          echo "--- nested jars (jar-in-jar):"
+          unzip -l "$jar" | grep -E "META-INF/jars/.+\.jar" || echo "NONE FOUND"
+          echo "--- our classes:"
+          unzip -l "$jar" | grep -cE "dev/viabridge/.+\.class" | xargs echo "class count:"
+          echo "--- fabric.mod.json:"
+          unzip -p "$jar" fabric.mod.json
 
       - name: Upload mod jar
         if: success()
