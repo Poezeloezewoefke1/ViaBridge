@@ -679,6 +679,8 @@ public class TextureMixerScreen extends InputScreen {
             }
             if (variant.sourceId().equals(current)) {
                 info.append(" · ").append(Text.translatable("texturemixer.option.in_use").getString());
+            } else if (!variant.isVanilla() && session.enabledPackIds().contains(variant.sourceId())) {
+                info.append(" · ").append(Text.translatable("texturemixer.option.enabled").getString());
             }
             int infoColor = GuiDraw.GRAY;
             boolean enabled = true;

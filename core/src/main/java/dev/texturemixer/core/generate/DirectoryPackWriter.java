@@ -108,6 +108,30 @@ public final class DirectoryPackWriter implements PackWriter {
     }
 
     private static void move(Path from, Path to) throws IOException {
+        // On Windows a folder that File Explorer or a virus scanner is looking at cannot be
+        // renamed for a moment, so retry a few times before giving up.
+        java.nio.file.FileSystemException last = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                moveOnce(from, to);
+                return;
+            } catch (java.nio.file.NoSuchFileException | java.nio.file.FileAlreadyExistsException e) {
+                throw e;
+            } catch (java.nio.file.FileSystemException e) {
+                last = e;
+                try {
+                    Thread.sleep(100L << attempt);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        throw new IOException("Could not move " + from.getFileName() + " to " + to
+                + "; is the folder open in another program? (" + (last == null ? "interrupted" : last.getMessage()) + ")", last);
+    }
+
+    private static void moveOnce(Path from, Path to) throws IOException {
         try {
             Files.move(from, to, StandardCopyOption.ATOMIC_MOVE);
         } catch (AtomicMoveNotSupportedException | DirectoryNotEmptyException e) {
