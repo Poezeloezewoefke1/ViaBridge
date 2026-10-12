@@ -63,7 +63,7 @@ jobs:
 
       - name: Install virtual display
         if: matrix.gametest
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri imagemagick
 
       - name: Run in-game tests
         if: matrix.gametest
@@ -72,6 +72,7 @@ jobs:
       # Screenshots are also printed (small JPEGs, base64) so they can be checked from the log.
       - name: Print game test screenshots
         if: always() && matrix.gametest
+        continue-on-error: true
         run: |
           dir=fabric/${{ matrix.mc }}/build/run/clientGameTest/screenshots
           [ -d "$dir" ] || exit 0
