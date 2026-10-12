@@ -18,12 +18,19 @@ changes or overwrites them.
 
 ## Supported versions
 
-| Minecraft | Folder           | Status |
-|-----------|------------------|--------|
-| 1.21.4    | `fabric/1.21.4`  | Built and tested in game in CI (see "Testing") |
+| Minecraft      | Folder            | Status |
+|----------------|-------------------|--------|
+| 1.21.11        | `fabric/1.21.11`  | Built, and tested in game in CI |
+| 1.21.4         | `fabric/1.21.4`   | Built, and tested in game in CI |
+| 1.21 - 1.21.1  | `fabric/1.21.1`   | Built in CI; not started in CI (see below) |
+| 1.20.1         | `fabric/1.20.1`   | Built in CI; not started in CI (see below) |
 
-Each Minecraft version is its own small Gradle project under `fabric/<version>`. See
-"Porting to another version" below.
+Each Minecraft version gets its own jar. Fabric's in-game test API only exists from
+1.21.4 on, so CI can't start the 1.21.1 and 1.20.1 builds. Those two compile against
+their own Minecraft version and run the same shared code that is tested on 1.21.4 and
+1.21.11, but nobody has started them in a real game yet. Versions in between (1.20.2 -
+1.20.6, 1.21.2 - 1.21.3, 1.21.5 - 1.21.10) and 26.1 have no build yet. See "Porting to
+another version"; most of them only need a new `VersionCompat`.
 
 Requires [Fabric Loader](https://fabricmc.net/use/) and [Fabric API](https://modrinth.com/mod/fabric-api).
 
@@ -108,7 +115,8 @@ These are not supported yet. The mod does not pretend otherwise:
 ## Building
 
 Requirements: JDK 21 and internet access to `maven.fabricmc.net`, Mojang's servers and
-Maven Central. The Gradle wrapper downloads everything else.
+Maven Central. The Gradle wrapper (Gradle 8.14) and Fabric Loom 1.13 download everything
+else.
 
 ```sh
 ./gradlew build                      # core + every Minecraft version
@@ -130,8 +138,8 @@ Pushing a `v*` tag also publishes them as a GitHub release.
   ZIPs, overlays), indexing, pack generation (folder and ZIP), refusing to overwrite
   foreign packs, profiles (including a corrupt file), undo/redo, filtering and
   randomize.
-- `fabric/1.21.4/src/gametest`: a Fabric client game test that starts the real game
-  under a virtual display. It installs test packs, opens the vanilla Resource Packs
+- `fabric/1.21.4/src/gametest` and `fabric/1.21.11/src/gametest`: a Fabric client game
+  test that starts the real game under a virtual display. It installs test packs, opens the vanilla Resource Packs
   screen, presses **Mix Textures**, picks textures, presses **Apply**, and then checks
   that Minecraft actually loads those textures from the generated pack. It also covers
   undo/redo, profiles and export, and checks that closing the pack screen keeps the
@@ -155,18 +163,24 @@ fabric/common/              Minecraft code shared by every version (compiled int
   gui/                      Selection, profile and problem screens
   mixin/PackScreenAccessor  Read-only access to two fields of the vanilla pack screen
   pack/VanillaPackSource    Minecraft's built-in textures as a source
+fabric/input-legacy/        InputScreen for 1.20 - 1.21.8 (raw mouse/key callbacks)
+fabric/input-1.21.9/        InputScreen for 1.21.9+ (Click / KeyInput event objects)
 fabric/<version>/           One Gradle project per Minecraft version
   gradle.properties         Minecraft, Yarn, Fabric API, Java versions
   .../compat/VersionCompat  The calls that differ between versions
+  src/gametest/             In-game client test (1.21.4 and newer)
 ```
 
 ## Porting to another version
 
-1. Copy `fabric/1.21.4` to `fabric/<new version>` (`settings.gradle.kts` picks it up
-   automatically).
+1. Copy the closest existing module (`fabric/1.21.4` for 1.21.2 - 1.21.8,
+   `fabric/1.21.11` for 1.21.9+, `fabric/1.20.1` or `fabric/1.21.1` for older) to
+   `fabric/<new version>`. `settings.gradle.kts` picks it up automatically.
 2. Update its `gradle.properties` (Minecraft, Yarn, Fabric API, Java, dependency range).
+   The versions that exist are listed in Fabric's Maven metadata.
 3. Fix `VersionCompat` for that version: pack format, identifier creation, texture
-   drawing, background rendering, enabled pack ids, dynamic textures.
+   drawing, background rendering, enabled pack ids, dynamic textures. Point the module
+   at the right input layer (`fabric/input-legacy` or `fabric/input-1.21.9`).
 4. If shared code in `fabric/common` no longer compiles, move just that piece behind
    `VersionCompat` instead of forking the screen.
 5. Add the version to the matrix in `.github/workflows/build.yml`.

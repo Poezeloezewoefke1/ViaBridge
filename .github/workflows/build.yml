@@ -63,26 +63,11 @@ jobs:
 
       - name: Install virtual display
         if: matrix.gametest
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri imagemagick
+        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri
 
       - name: Run in-game tests
         if: matrix.gametest
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:runClientGameTest 2>&1 | tee gametest.log; exit ${PIPESTATUS[0]}
-
-      # Screenshots are also printed (small JPEGs, base64) so they can be checked from the log.
-      - name: Print game test screenshots
-        if: always() && matrix.gametest
-        continue-on-error: true
-        run: |
-          dir=fabric/${{ matrix.mc }}/build/run/clientGameTest/screenshots
-          [ -d "$dir" ] || exit 0
-          for f in "$dir"/*mixer-screen*.png "$dir"/*pack-screen-after*.png; do
-            [ -f "$f" ] || continue
-            convert "$f" -resize 800x -quality 40 /tmp/shot.jpg
-            echo "BEGIN_SHOT $(basename "$f")"
-            base64 -w 4000 /tmp/shot.jpg
-            echo "END_SHOT"
-          done
 
       - name: Upload mod jar
         uses: actions/upload-artifact@v4
