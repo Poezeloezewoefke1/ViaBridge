@@ -307,7 +307,8 @@ public final class MixerSession {
 
     private void afterChange() {
         profiles.put(profiles.active(), selections);
-        if (onlyChanged) {
+        if (onlyChanged || !includeUnmodded) {
+            // Both views depend on which textures are picked.
             refilter();
         }
         revision++;
