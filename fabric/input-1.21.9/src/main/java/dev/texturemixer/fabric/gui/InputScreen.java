@@ -59,7 +59,7 @@ public abstract class InputScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyInput input) {
-        return onKeyPressed(input.getKeycode(), input.hasCtrlOrCmd(), input.hasShift()) || super.keyPressed(input);
+        return onKeyPressed(input.getKeycode(), input.hasCtrl(), input.hasShift()) || super.keyPressed(input);
     }
 
     // The cursor position in GUI coordinates; equal to the event's position.
