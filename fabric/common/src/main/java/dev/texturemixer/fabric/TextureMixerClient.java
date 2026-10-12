@@ -35,6 +35,10 @@ public final class TextureMixerClient implements ClientModInitializer {
                     .tooltip(Tooltip.of(Text.translatable("texturemixer.button.mix.tooltip")))
                     .build();
             Screens.getButtons(screen).add(button);
+            // Keep it in the corner even if the window is resized without re-initializing
+            // the screen. Fabric clears these listeners whenever the screen is initialized.
+            ScreenEvents.beforeRender(screen).register((current, context, mouseX, mouseY, delta) ->
+                    button.setX(current.width - button.getWidth() - 6));
         });
 
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> TextureMixerManager.get().cancelScan());

@@ -77,6 +77,19 @@ jobs:
         if: matrix.gametest
         run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:runClientGameTest --stacktrace
 
+      # Screenshots are also printed (small JPEGs, base64) so they can be checked from the log.
+      - name: Print game test screenshots
+        if: always() && matrix.gametest
+        run: |
+          dir=fabric/${{ matrix.mc }}/build/run/clientGameTest/screenshots
+          [ -d "$dir" ] || exit 0
+          for f in "$dir"/*.png; do
+            convert "$f" -resize 854x -quality 55 /tmp/shot.jpg
+            echo "BEGIN_SHOT $(basename "$f")"
+            base64 -w 4000 /tmp/shot.jpg
+            echo "END_SHOT"
+          done
+
       - name: Upload mod jar
         uses: actions/upload-artifact@v4
         with:
