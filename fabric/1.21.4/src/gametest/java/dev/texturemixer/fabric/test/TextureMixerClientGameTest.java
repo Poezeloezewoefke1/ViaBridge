@@ -12,12 +12,10 @@ import dev.texturemixer.fabric.compat.VersionCompat;
 import dev.texturemixer.fabric.gui.TextureMixerScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
-import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.pack.PackScreen;
 import net.minecraft.resource.Resource;
-import net.minecraft.resource.ResourceType;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,10 +46,8 @@ public class TextureMixerClientGameTest implements FabricClientGameTest {
 
     @Override
     public void runTest(ClientGameTestContext context) {
-        int gameFormat = context.computeOnClient(client ->
-                SharedConstants.getGameVersion().getResourceVersion(ResourceType.CLIENT_RESOURCES));
-        check(gameFormat == VersionCompat.PACK_FORMAT,
-                "VersionCompat.PACK_FORMAT is " + VersionCompat.PACK_FORMAT + " but the game uses " + gameFormat);
+        int gameFormat = context.computeOnClient(client -> VersionCompat.packFormat());
+        LOG.info("Running on pack format {}", gameFormat);
 
         Path packDir = context.computeOnClient(MinecraftClient::getResourcePackDir);
         try {

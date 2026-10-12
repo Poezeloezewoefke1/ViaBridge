@@ -1,5 +1,6 @@
 package dev.texturemixer.fabric.compat;
 
+import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.render.RenderLayer;
@@ -7,6 +8,7 @@ import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.texture.TextureManager;
 import net.minecraft.resource.ResourcePackManager;
+import net.minecraft.resource.ResourceType;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -18,10 +20,12 @@ import java.util.List;
  * these exact members; the shared code in {@code fabric/common} only calls through here.
  */
 public final class VersionCompat {
-    /** Resource pack format of Minecraft 1.21.4. */
-    public static final int PACK_FORMAT = 46;
-
     private VersionCompat() {
+    }
+
+    /** Resource pack format of the running game. */
+    public static int packFormat() {
+        return SharedConstants.getGameVersion().getResourceVersion(ResourceType.CLIENT_RESOURCES);
     }
 
     public static Identifier id(String namespace, String path) {
@@ -35,7 +39,7 @@ public final class VersionCompat {
                 regionWidth, regionHeight, textureWidth, textureHeight);
     }
 
-    /** Since 1.20.2 {@link Screen#render} draws the background itself; drawing it twice would crash 1.21.4's blur. */
+    /** Since 1.20.2 Minecraft draws screen backgrounds itself; drawing it twice would trip the blur check added in 1.20.5. */
     public static void renderBackgroundIfNeeded(Screen screen, DrawContext context, int mouseX, int mouseY, float delta) {
     }
 

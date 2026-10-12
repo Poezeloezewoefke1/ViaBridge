@@ -133,7 +133,7 @@ public final class TextureMixerManager {
             sources.add(vanilla);
             sources.addAll(result.packs());
             try {
-                TextureIndex built = new TextureIndexer(VersionCompat.PACK_FORMAT,
+                TextureIndex built = new TextureIndexer(VersionCompat.packFormat(),
                         (done, total, name) -> scanStatus = done < total ? "Reading pack " + (done + 1) + "/" + total + ": " + name : "",
                         () -> cancelScan)
                         .build(sources, result.problems(), fingerprint);
@@ -225,7 +225,7 @@ public final class TextureMixerManager {
     }
 
     private GenerationOptions options() {
-        return new GenerationOptions(VersionCompat.PACK_FORMAT, session().activeProfile(), gameVersion(), icon());
+        return new GenerationOptions(VersionCompat.packFormat(), session().activeProfile(), gameVersion(), icon());
     }
 
     private void activateGeneratedPack(Screen packScreen) {

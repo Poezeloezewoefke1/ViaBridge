@@ -22,7 +22,7 @@ public final class TextureMixerClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         Log.LOGGER.info("Texture Mixer loaded for Minecraft {} (pack format {})",
-                TextureMixerManager.gameVersion(), VersionCompat.PACK_FORMAT);
+                TextureMixerManager.gameVersion(), VersionCompat.packFormat());
 
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
             if (!TextureMixerManager.get().isResourcePackScreen(screen)) {

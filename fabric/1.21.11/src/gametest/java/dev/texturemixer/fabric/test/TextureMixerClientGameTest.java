@@ -51,9 +51,9 @@ public class TextureMixerClientGameTest implements FabricClientGameTest {
     public void runTest(ClientGameTestContext context) {
         PackVersion gameVersion = context.computeOnClient(client ->
                 SharedConstants.getGameVersion().packVersion(ResourceType.CLIENT_RESOURCES));
-        check(PackVersion.of(VersionCompat.PACK_FORMAT).equals(gameVersion),
-                "VersionCompat.PACK_FORMAT is " + VersionCompat.PACK_FORMAT + " but the game uses " + gameVersion);
-        int gameFormat = VersionCompat.PACK_FORMAT;
+        check(PackVersion.of(VersionCompat.packFormat()).equals(gameVersion),
+                "VersionCompat.packFormat() is " + VersionCompat.packFormat() + " but the game uses " + gameVersion);
+        int gameFormat = VersionCompat.packFormat();
 
         Path packDir = context.computeOnClient(MinecraftClient::getResourcePackDir);
         try {
