@@ -47,6 +47,17 @@ final class TestPacks {
         Files.writeString(directory.resolve("TM Broken.zip"), "this is not a zip file");
     }
 
+    /** A pack dropped into the folder while the mixer screen is open. */
+    static void writeLivePack(Path directory, int format) throws IOException {
+        String mcmeta = format >= 65
+                ? "{\"pack\":{\"min_format\":" + format + ",\"max_format\":" + format + ",\"description\":\"live\"}}"
+                : "{\"pack\":{\"pack_format\":" + format + ",\"description\":\"live\"}}";
+        Path live = directory.resolve("TM Live");
+        write(live.resolve("assets/minecraft/textures/block/dirt.png"), png(16, 16, 0x8B5A2BFF));
+        // pack.mcmeta last, so the folder only counts as a pack once it is complete.
+        write(live.resolve("pack.mcmeta"), mcmeta.getBytes(StandardCharsets.UTF_8));
+    }
+
     private static void write(Path file, byte[] data) throws IOException {
         Files.createDirectories(file.getParent());
         Files.write(file, data);

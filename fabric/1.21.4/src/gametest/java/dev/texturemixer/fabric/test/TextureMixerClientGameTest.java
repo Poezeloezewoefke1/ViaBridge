@@ -99,6 +99,17 @@ public class TextureMixerClientGameTest implements FabricClientGameTest {
         context.waitTicks(20);
         context.takeScreenshot("texturemixer-2-mixer-screen");
 
+        // A pack added while the screen is open shows up without reopening it.
+        try {
+            TestPacks.writeLivePack(packDir, gameFormat);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        context.waitFor(client -> {
+            TextureIndex index = TextureMixerManager.get().session().index();
+            return index != null && index.source("file/TM Live") != null;
+        }, 20 * 30);
+
         // 3. Apply: pack written, enabled on top, resources reloaded.
         context.clickScreenButton("texturemixer.apply");
         context.waitFor(client -> client.getResourcePackManager().getEnabledIds().contains(TextureMixerConstants.GENERATED_PACK_ID), 20 * 60);

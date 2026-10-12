@@ -93,5 +93,6 @@
   "texturemixer.leave.title": "Apply your picks?",
   "texturemixer.leave.message": "Some picks are not in game yet. They are saved either way; apply them now to see them?",
   "texturemixer.leave.later": "Not now",
-  "texturemixer.tooltip.right_click": "Right-click: back to unchanged"
+  "texturemixer.tooltip.right_click": "Right-click: back to unchanged",
+  "texturemixer.status.packs_changed": "Your resource packs changed; the list was updated."
 }

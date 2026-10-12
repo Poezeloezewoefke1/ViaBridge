@@ -204,6 +204,25 @@ public class TextureMixerScreen extends InputScreen {
                 .build();
     }
 
+    private int ticks;
+
+    /** Every few seconds, picks up packs added to or changed in the folder while the screen is open. */
+    @Override
+    public void tick() {
+        super.tick();
+        if (++ticks % 60 != 0 || busy || session.index() == null || manager.isScanning()) {
+            return;
+        }
+        TextureIndex before = session.index();
+        manager.refreshIndex(false).whenComplete((index, error) -> client.execute(() -> {
+            if (error == null && index != before && session.index() == before) {
+                session.setIndex(index);
+                clampScroll();
+                setStatus(Text.translatable("texturemixer.status.packs_changed"), GuiDraw.YELLOW);
+            }
+        }));
+    }
+
     private void startScan(boolean force) {
         manager.refreshIndex(force).whenComplete((index, error) -> client.execute(() -> {
             if (error != null) {
@@ -426,19 +445,62 @@ public class TextureMixerScreen extends InputScreen {
 
         TextureEntry hovered = index == null ? null : entryAt(mouseX, mouseY);
         if (hovered != null) {
-            List<Text> lines = new ArrayList<>();
-            lines.add(Text.literal(hovered.id().toString()));
-            String choice = session.choice(hovered.id());
-            if (choice != null) {
-                lines.add(Text.translatable("texturemixer.tooltip.picked", sourceName(index, choice)).formatted(net.minecraft.util.Formatting.GREEN));
-            } else {
-                lines.add(Text.translatable("texturemixer.tooltip.unchanged", sourceName(index, session.currentSource(hovered))).formatted(net.minecraft.util.Formatting.GRAY));
-            }
+            renderHoverCard(context, index, hovered, mouseX, mouseY);
+        }
+    }
             lines.add(Text.translatable("texturemixer.tooltip.versions", hovered.variants().size()).formatted(net.minecraft.util.Formatting.DARK_GRAY));
             if (choice != null) {
                 lines.add(Text.translatable("texturemixer.tooltip.right_click").formatted(net.minecraft.util.Formatting.DARK_GRAY));
             }
             context.drawTooltip(textRenderer, lines, mouseX, mouseY);
+        }
+    }
+
+    /** A card next to the cursor with a large preview and what is picked for the texture. */
+    private void renderHoverCard(DrawContext context, TextureIndex index, TextureEntry entry, int mouseX, int mouseY) {
+        List<String> lines = new ArrayList<>();
+        List<Integer> colors = new ArrayList<>();
+        lines.add(entry.id().toString());
+        colors.add(GuiDraw.WHITE);
+        String choice = session.choice(entry.id());
+        if (choice != null) {
+            lines.add(Text.translatable("texturemixer.tooltip.picked", sourceName(index, choice)).getString());
+            colors.add(GuiDraw.GREEN);
+        } else {
+            lines.add(Text.translatable("texturemixer.tooltip.unchanged", sourceName(index, session.currentSource(entry))).getString());
+            colors.add(GuiDraw.GRAY);
+        }
+        lines.add(Text.translatable("texturemixer.tooltip.versions", entry.variants().size()).getString());
+        colors.add(GuiDraw.DARK_GRAY);
+        if (choice != null) {
+            lines.add(Text.translatable("texturemixer.tooltip.right_click").getString());
+            colors.add(GuiDraw.DARK_GRAY);
+        }
+
+        int image = 48;
+        int textWidth = 0;
+        for (String line : lines) {
+            textWidth = Math.max(textWidth, textRenderer.getWidth(line));
+        }
+        textWidth = Math.min(textWidth, Math.max(80, width / 2));
+        int cardWidth = 6 + image + 6 + textWidth + 6;
+        int cardHeight = Math.max(image + 12, lines.size() * 10 + 10);
+        int x = mouseX + 12;
+        int y = mouseY + 4;
+        if (x + cardWidth > width - 2) {
+            x = Math.max(2, mouseX - 12 - cardWidth);
+        }
+        if (y + cardHeight > height - 2) {
+            y = Math.max(2, height - 2 - cardHeight);
+        }
+        context.fill(x, y, x + cardWidth, y + cardHeight, 0xF0100010);
+        GuiDraw.border(context, x, y, cardWidth, cardHeight, 0xFF5000FF);
+        String effective = session.effectiveSource(entry);
+        TextureVariant variant = effective == null ? entry.variants().get(0) : entry.variant(effective);
+        GuiDraw.preview(context, previews, index, variant, x + 6, y + 6, image);
+        int textX = x + 6 + image + 6;
+        for (int i = 0; i < lines.size(); i++) {
+            GuiDraw.text(context, textRenderer, lines.get(i), textX, y + 6 + i * 10, textWidth, colors.get(i));
         }
     }
 
