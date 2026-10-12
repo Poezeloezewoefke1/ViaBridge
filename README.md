@@ -92,6 +92,9 @@ Other buttons:
 ## What it handles
 
 - Folder packs and ZIP packs, enabled or not.
+- Minecraft's built-in optional packs (Programmer Art, High Contrast) and the textures
+  inside installed mods are sources too. A texture only one built-in or mod pack has is
+  hidden in the default view; switch **Show:** to "All textures" to see those.
 - `.png.mcmeta` files: animations, blur and clamp settings are copied along with the
   texture.
 - Pack overlays (1.20.2+): files from overlay folders that apply to the running version
@@ -121,8 +124,6 @@ These are not supported yet. The mod does not pretend otherwise:
   names. They can't be picked because this Minecraft version would ignore them. No
   automatic renaming is done.
 - **Previews show the first animation frame.** The animation itself plays in game.
-- **Textures from other mods' built-in resources** aren't offered as sources yet. Only
-  packs in the resourcepacks folder and Minecraft's own textures are.
 - **Exported ZIPs** contain textures made by other people. Check each pack's license
   before sharing an export. A `texturemixer-sources.json` inside the pack records which
   pack every texture came from.
