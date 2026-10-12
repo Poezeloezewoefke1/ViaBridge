@@ -32,10 +32,10 @@ public final class VersionCompat {
         return new Identifier(namespace, path);
     }
 
-    /** Draws a {@code regionWidth}x{@code regionHeight} region from the top-left of a texture, scaled to the given size. */
+    /** Draws the {@code regionWidth}x{@code regionHeight} region at ({@code u}, {@code v}) of a texture, scaled to the given size. */
     public static void drawTexture(DrawContext context, Identifier texture, int x, int y, int width, int height,
-                                   int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
-        context.drawTexture(texture, x, y, width, height, 0.0f, 0.0f, regionWidth, regionHeight, textureWidth, textureHeight);
+                                   float u, float v, int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
+        context.drawTexture(texture, x, y, width, height, u, v, regionWidth, regionHeight, textureWidth, textureHeight);
     }
 
     /** Since 1.20.2 Minecraft draws screen backgrounds itself; drawing it twice would trip the blur check added in 1.20.5. */

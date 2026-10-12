@@ -33,6 +33,9 @@ public final class PreviewCache {
     private static final long MAX_PIXELS = 8L * 1024 * 1024;
     /** Largest preview side. Previews are drawn at most 32 GUI pixels wide (128 real pixels at scale 4). */
     static final int MAX_THUMBNAIL = 128;
+    /** Frame size and count limits for playing animations in the selected texture's previews. */
+    static final int MAX_ANIMATED_FRAME = 64;
+    static final int MAX_ANIMATED_FRAMES = 128;
     /** Requests not drawn for this many frames are dropped before decoding (fast scrolling). */
     private static final long STALE_FRAMES = 30;
 
@@ -57,22 +60,35 @@ public final class PreviewCache {
      * loading (or if it could not be decoded). Starts loading on first request.
      */
     public Preview get(TextureIndex index, TextureVariant variant) {
+        return get(index, variant, false);
+    }
+
+    /**
+     * Like {@link #get(TextureIndex, TextureVariant)}, but for an animated texture keeps
+     * every frame (each shrunk to at most {@value #MAX_ANIMATED_FRAME} pixels) so the
+     * preview can play the animation. Used only for the few previews of the selected texture.
+     */
+    public Preview getAnimated(TextureIndex index, TextureVariant variant) {
+        return get(index, variant, variant.animated());
+    }
+
+    private Preview get(TextureIndex index, TextureVariant variant, boolean animated) {
         String sourceId = variant.sourceId();
         String path = variant.filePath();
-        String key = sourceId + "\n" + path;
+        String key = (animated ? "anim\n" : "") + sourceId + "\n" + path;
         Slot slot = slots.get(key);
         if (slot == null) {
             slot = new Slot();
             slots.put(key, slot);
             slot.lastFrame = frame;
-            load(index, key, slot, variant);
+            load(index, key, slot, variant, animated);
             return null;
         }
         slot.lastFrame = frame;
         return slot.preview;
     }
 
-    private void load(TextureIndex index, String key, Slot slot, TextureVariant variant) {
+    private void load(TextureIndex index, String key, Slot slot, TextureVariant variant, boolean animated) {
         String sourceId = variant.sourceId();
         String path = variant.filePath();
         int expectedGeneration = generation;
@@ -91,16 +107,19 @@ public final class PreviewCache {
                 return;
             }
             NativeImage image;
+            int[] frame = new int[3];
             try (InputStream in = source.open(path)) {
                 byte[] bytes = BoundedReader.readAll(in, TextureMixerConstants.MAX_ASSET_BYTES, path);
-                image = thumbnail(NativeImage.read(NativeImage.Format.RGBA, new ByteArrayInputStream(bytes)),
-                        variant.frameWidth(), variant.frameHeight());
+                NativeImage full = NativeImage.read(NativeImage.Format.RGBA, new ByteArrayInputStream(bytes));
+                image = animated
+                        ? strip(full, variant.frameWidth(), variant.frameHeight(), frame)
+                        : thumbnail(full, variant.frameWidth(), variant.frameHeight());
             } catch (Exception e) {
                 Log.LOGGER.debug("Preview of {} from {} failed", path, sourceId, e);
                 client.execute(() -> slot.failed = true);
                 return;
             }
-            client.execute(() -> upload(expectedGeneration, key, slot, image));
+            client.execute(() -> upload(expectedGeneration, key, slot, image, frame));
         });
     }
 
@@ -132,7 +151,38 @@ public final class PreviewCache {
         }
     }
 
-    private void upload(int expectedGeneration, String key, Slot slot, NativeImage image) {
+    /**
+     * Shrinks an animation strip so each frame is at most {@link #MAX_ANIMATED_FRAME}
+     * pixels, keeping at most {@link #MAX_ANIMATED_FRAMES} frames. Writes the new frame
+     * width, height and count into {@code frame}. Closes {@code image}.
+     */
+    static NativeImage strip(NativeImage image, int frameWidth, int frameHeight, int[] frame) {
+        try {
+            int width = Math.max(1, Math.min(frameWidth, image.getWidth()));
+            int height = Math.max(1, Math.min(frameHeight, image.getHeight()));
+            int columns = Math.max(1, image.getWidth() / width);
+            int rows = Math.max(1, image.getHeight() / height);
+            // Only whole rows are kept, so the frame order (left to right, top to bottom) stays intact.
+            int keptRows = Math.min(rows, Math.max(1, MAX_ANIMATED_FRAMES / columns));
+            double scale = Math.min(1.0, (double) MAX_ANIMATED_FRAME / Math.max(width, height));
+            int targetFrameWidth = Math.max(1, (int) Math.round(width * scale));
+            int targetFrameHeight = Math.max(1, (int) Math.round(height * scale));
+            NativeImage result = new NativeImage(targetFrameWidth * columns, targetFrameHeight * keptRows, false);
+            if (scale == 1.0) {
+                image.copyRect(result, 0, 0, 0, 0, width * columns, height * keptRows, false, false);
+            } else {
+                image.resizeSubRectTo(0, 0, width * columns, height * keptRows, result);
+            }
+            frame[0] = targetFrameWidth;
+            frame[1] = targetFrameHeight;
+            frame[2] = columns * keptRows;
+            return result;
+        } finally {
+            image.close();
+        }
+    }
+
+    private void upload(int expectedGeneration, String key, Slot slot, NativeImage image, int[] frame) {
         if (generation != expectedGeneration || slots.get(key) != slot) {
             image.close();
             return;
@@ -148,7 +198,9 @@ public final class PreviewCache {
             slot.failed = true;
             return;
         }
-        slot.preview = new Preview(id, width, height);
+        slot.preview = frame[2] > 1
+                ? new Preview(id, width, height, frame[0], frame[1], frame[2])
+                : new Preview(id, width, height, width, height, 1);
         pixels += (long) width * height;
         evict();
     }
@@ -187,7 +239,11 @@ public final class PreviewCache {
         return slots.size();
     }
 
-    public record Preview(Identifier id, int width, int height) {
+    /**
+     * An uploaded preview. Still previews have one frame covering the whole image; animated
+     * ones are a grid of {@code frames} frames, left to right and top to bottom.
+     */
+    public record Preview(Identifier id, int width, int height, int frameWidth, int frameHeight, int frames) {
     }
 
     private static final class Slot {

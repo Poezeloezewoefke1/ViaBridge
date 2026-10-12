@@ -1,5 +1,6 @@
 package dev.texturemixer.fabric;
 
+import dev.texturemixer.core.util.BackgroundExecutor;
 import dev.texturemixer.core.util.Log;
 import dev.texturemixer.fabric.compat.VersionCompat;
 import dev.texturemixer.fabric.gui.TextureMixerScreen;
@@ -41,6 +42,9 @@ public final class TextureMixerClient implements ClientModInitializer {
                     button.setX(current.width - button.getWidth() - 6));
         });
 
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> TextureMixerManager.get().cancelScan());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            TextureMixerManager.get().cancelScan();
+            BackgroundExecutor.awaitSaves();
+        });
     }
 }

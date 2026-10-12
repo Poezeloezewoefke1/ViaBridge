@@ -26,6 +26,17 @@ public final class BackgroundExecutor {
     private BackgroundExecutor() {
     }
 
+    /** Blocks until every profile save queued so far has been written (used at shutdown). */
+    public static void awaitSaves() {
+        try {
+            SAVE.submit(() -> { }).get(10, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+            Log.LOGGER.warn("Timed out waiting for texture profiles to be saved", e);
+        }
+    }
+
     private static ThreadFactory factory(String name) {
         AtomicInteger counter = new AtomicInteger();
         return runnable -> {

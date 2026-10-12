@@ -30,6 +30,5 @@ report problems.
 - Only textures are mixed; models, blockstates, sounds and fonts are not copied.
 - OptiFine / Continuity features (CTM, CIT, emissive) are ignored.
 - Pre-1.13 packs are listed but their textures can't be picked.
-- Previews show the first animation frame (animations do play in game).
 
 See the README for details.

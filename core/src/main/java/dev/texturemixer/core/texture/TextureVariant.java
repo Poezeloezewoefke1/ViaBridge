@@ -13,11 +13,12 @@ import dev.texturemixer.core.TextureMixerConstants;
  * @param frameWidth    width of one animation frame (the whole width if not animated)
  * @param frameHeight   height of one animation frame (the whole height if not animated)
  * @param animated      the {@code .mcmeta} declares an animation
+ * @param frameTime     ticks per animation frame (1 when not animated)
  * @param legacyPath    stored under a pre-1.13 folder name that current versions ignore
  */
 public record TextureVariant(TextureId id, String sourceId, String filePath, String metadataPath,
                              int width, int height, int frameWidth, int frameHeight,
-                             boolean animated, boolean legacyPath) {
+                             boolean animated, int frameTime, boolean legacyPath) {
     public boolean isVanilla() {
         return TextureMixerConstants.VANILLA_SOURCE_ID.equals(sourceId);
     }

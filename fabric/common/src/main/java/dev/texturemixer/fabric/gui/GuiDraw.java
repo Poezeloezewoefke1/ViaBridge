@@ -53,7 +53,20 @@ final class GuiDraw {
      */
     static void preview(DrawContext context, PreviewCache cache, TextureIndex index, TextureVariant variant,
                         int x, int y, int size) {
-        PreviewCache.Preview preview = variant == null ? null : cache.get(index, variant);
+        draw(context, variant == null ? null : cache.get(index, variant), variant, x, y, size);
+    }
+
+    /** Like {@link #preview}, but plays the animation of animated textures. */
+    static void animatedPreview(DrawContext context, PreviewCache cache, TextureIndex index, TextureVariant variant,
+                                int x, int y, int size) {
+        PreviewCache.Preview preview = variant == null ? null : cache.getAnimated(index, variant);
+        if (preview == null && variant != null) {
+            preview = cache.get(index, variant); // still frame while the animation loads
+        }
+        draw(context, preview, variant, x, y, size);
+    }
+
+    private static void draw(DrawContext context, PreviewCache.Preview preview, TextureVariant variant, int x, int y, int size) {
         if (preview == null) {
             int half = size / 2;
             context.fill(x, y, x + size, y + size, 0xFF2A2A2A);
@@ -61,8 +74,17 @@ final class GuiDraw {
             context.fill(x + half, y + half, x + size, y + size, 0xFF3A3A3A);
             return;
         }
-        int width = preview.width();
-        int height = preview.height();
+        int width = preview.frameWidth();
+        int height = preview.frameHeight();
+        int u = 0;
+        int v = 0;
+        if (preview.frames() > 1) {
+            long ticks = System.currentTimeMillis() / 50;
+            int frame = (int) ((ticks / Math.max(1, variant.frameTime())) % preview.frames());
+            int columns = Math.max(1, preview.width() / width);
+            u = (frame % columns) * width;
+            v = (frame / columns) * height;
+        }
         int drawWidth = size;
         int drawHeight = size;
         if (width > height) {
@@ -71,6 +93,6 @@ final class GuiDraw {
             drawWidth = Math.max(1, size * width / height);
         }
         VersionCompat.drawTexture(context, preview.id(), x + (size - drawWidth) / 2, y + (size - drawHeight) / 2,
-                drawWidth, drawHeight, width, height, width, height);
+                drawWidth, drawHeight, u, v, width, height, preview.width(), preview.height());
     }
 }

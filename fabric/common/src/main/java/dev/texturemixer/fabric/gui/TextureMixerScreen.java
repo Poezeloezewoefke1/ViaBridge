@@ -523,7 +523,7 @@ public class TextureMixerScreen extends InputScreen {
 
         // Header: large preview of what will be shown, and the texture's identity.
         String effective = session.effectiveSource(entry);
-        GuiDraw.preview(context, previews, index, effective == null ? null : entry.variant(effective), panelX + 4, gridY + 4, 32);
+        GuiDraw.animatedPreview(context, previews, index, effective == null ? null : entry.variant(effective), panelX + 4, gridY + 4, 32);
         int textX = panelX + 42;
         int textWidth = panelWidth - 46;
         GuiDraw.text(context, textRenderer, entry.id().shortName(), textX, gridY + 4, textWidth, GuiDraw.WHITE);
@@ -554,7 +554,7 @@ public class TextureMixerScreen extends InputScreen {
             } else if (hover) {
                 context.fill(panelX + 1, y, panelX + panelWidth - 1, y + ROW - 1, GuiDraw.HOVER);
             }
-            GuiDraw.preview(context, previews, index, option.variant, panelX + 3, y + 2, ROW - 5);
+            GuiDraw.animatedPreview(context, previews, index, option.variant, panelX + 3, y + 2, ROW - 5);
             int labelX = panelX + ROW + 2;
             int labelWidth = panelWidth - ROW - 5;
             String number = i < 9 ? (i + 1) + " " : "";

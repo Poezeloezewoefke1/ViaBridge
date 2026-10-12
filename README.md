@@ -144,7 +144,6 @@ These are not supported yet. The mod does not pretend otherwise:
 - **Pre-1.13 packs**: their `blocks/` and `items/` folders are listed but flagged as old
   names. They can't be picked because this Minecraft version would ignore them. No
   automatic renaming is done.
-- **Previews show the first animation frame.** The animation itself plays in game.
 - **Exported ZIPs** contain textures made by other people. Check each pack's license
   before sharing an export. A `texturemixer-sources.json` inside the pack records which
   pack every texture came from.

@@ -50,6 +50,12 @@ class CoreTest {
     @TempDir
     Path temp;
 
+    @org.junit.jupiter.api.AfterEach
+    void waitForBackgroundSaves() {
+        // Sessions save in the background; let them finish before the temp folder is deleted.
+        dev.texturemixer.core.util.BackgroundExecutor.awaitSaves();
+    }
+
     private Path packs() throws IOException {
         Path dir = temp.resolve("resourcepacks");
         TestPacks.pack()

@@ -179,10 +179,12 @@ public final class TextureIndexer {
             int frameWidth = info.width();
             int frameHeight = info.height();
             boolean animated = false;
+            int frameTime = 1;
             if (metadataPath != null) {
                 JsonObject animation = readAnimation(source, metadataPath);
                 if (animation != null) {
                     animated = true;
+                    frameTime = Math.max(1, intOr(animation, "frametime", 1));
                     int square = Math.min(info.width(), info.height());
                     frameWidth = intOr(animation, "width", square);
                     frameHeight = intOr(animation, "height", square);
@@ -197,7 +199,7 @@ public final class TextureIndexer {
                 legacy++;
             }
             variants.add(new TextureVariant(id, source.id(), pngPath, metadataPath, info.width(), info.height(),
-                    frameWidth, frameHeight, animated, legacyPath));
+                    frameWidth, frameHeight, animated, frameTime, legacyPath));
         }
         if (unreadable > 0) {
             problems.add(PackProblem.warning(source.displayName(), unreadable + " texture(s) are not valid PNG images and were skipped"));

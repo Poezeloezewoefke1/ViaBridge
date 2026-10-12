@@ -33,10 +33,10 @@ public final class VersionCompat {
         return Identifier.of(namespace, path);
     }
 
-    /** Draws a {@code regionWidth}x{@code regionHeight} region from the top-left of a texture, scaled to the given size. */
+    /** Draws the {@code regionWidth}x{@code regionHeight} region at ({@code u}, {@code v}) of a texture, scaled to the given size. */
     public static void drawTexture(DrawContext context, Identifier texture, int x, int y, int width, int height,
-                                   int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
-        context.drawTexture(RenderPipelines.GUI_TEXTURED, texture, x, y, 0.0f, 0.0f, width, height,
+                                   float u, float v, int regionWidth, int regionHeight, int textureWidth, int textureHeight) {
+        context.drawTexture(RenderPipelines.GUI_TEXTURED, texture, x, y, u, v, width, height,
                 regionWidth, regionHeight, textureWidth, textureHeight);
     }
 
