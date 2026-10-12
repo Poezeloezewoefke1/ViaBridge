@@ -448,13 +448,6 @@ public class TextureMixerScreen extends InputScreen {
             renderHoverCard(context, index, hovered, mouseX, mouseY);
         }
     }
-            lines.add(Text.translatable("texturemixer.tooltip.versions", hovered.variants().size()).formatted(net.minecraft.util.Formatting.DARK_GRAY));
-            if (choice != null) {
-                lines.add(Text.translatable("texturemixer.tooltip.right_click").formatted(net.minecraft.util.Formatting.DARK_GRAY));
-            }
-            context.drawTooltip(textRenderer, lines, mouseX, mouseY);
-        }
-    }
 
     /** A card next to the cursor with a large preview and what is picked for the texture. */
     private void renderHoverCard(DrawContext context, TextureIndex index, TextureEntry entry, int mouseX, int mouseY) {
