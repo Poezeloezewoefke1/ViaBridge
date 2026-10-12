@@ -31,6 +31,12 @@ jobs:
         include:
           - mc: "1.21.4"
             gametest: true
+          # Fabric's client game test API only exists from 1.21.4 on; older versions
+          # are compiled and their jars checked, but not started in CI.
+          - mc: "1.21.1"
+            gametest: false
+          - mc: "1.20.1"
+            gametest: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

@@ -9,6 +9,7 @@ plugins {
 
 val minecraftVersion = property("minecraft_version") as String
 val javaRelease = (property("java_release") as String).toInt()
+val minecraftDependency = property("minecraft_dependency") as String
 
 version = "${rootProject.property("mod_version")}+mc$minecraftVersion"
 
@@ -58,8 +59,8 @@ loom {
 
 tasks.processResources {
     val properties = mapOf(
-        "version" to project.version,
-        "minecraft_dependency" to property("minecraft_dependency"),
+        "version" to project.version.toString(),
+        "minecraft_dependency" to minecraftDependency,
         "java_release" to javaRelease,
     )
     inputs.properties(properties)
