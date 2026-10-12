@@ -146,7 +146,7 @@ The mod jar ends up in `fabric/<version>/build/libs/texture-mixer-fabric-<mod ve
 To try it in a development client: `./gradlew :fabric-1.21.4:runClient`.
 
 Every push builds the jars on GitHub Actions and attaches them to the run as artifacts.
-Pushing a `v*` tag also publishes them as a GitHub release.
+Pushing a `v*` tag, or running the **Build** workflow by hand with a `release_tag` such as `v0.2.0`, also publishes them as a GitHub release.
 
 ## Testing
 
