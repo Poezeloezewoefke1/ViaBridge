@@ -102,15 +102,6 @@ jobs:
             fabric/${{ matrix.mc }}/build/run/clientGameTest/logs/latest.log
           if-no-files-found: ignore
 
-      - name: Show published Fabric versions for this Minecraft version
-        if: always()
-        run: |
-          mc="${{ matrix.mc }}"
-          echo "fabric-api: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -oE "<version>[^<]*\+$mc</version>" | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
-          echo "yarn: $(curl -s https://maven.fabricmc.net/net/fabricmc/yarn/maven-metadata.xml | grep -oE "<version>$mc\+build\.[0-9]+</version>" | sed 's/<[^>]*>//g' | tail -2 | tr '\n' ' ')"
-          echo "loader: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml | grep -oE '<release>[^<]*' | sed 's/<release>//')"
-          echo "loom: $(curl -s https://maven.fabricmc.net/fabric-loom/fabric-loom.gradle.plugin/maven-metadata.xml | grep -oE '<version>1\.[0-9]+-SNAPSHOT</version>' | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
-
   release:
     name: Publish release
     if: startsWith(github.ref, 'refs/tags/v')

@@ -51,6 +51,9 @@ fabricApi {
 }
 
 loom {
+    // Fabric API for 1.21.11 ships its javadoc against Mojang names, which this Loom
+    // cannot attach to Yarn. It only affects IDE docs, not the mod.
+    enableModProvidedJavadoc.set(false)
     runs {
         named("client") {
             runDir("run")
