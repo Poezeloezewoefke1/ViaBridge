@@ -83,8 +83,9 @@ jobs:
         run: |
           dir=fabric/${{ matrix.mc }}/build/run/clientGameTest/screenshots
           [ -d "$dir" ] || exit 0
-          for f in "$dir"/*.png; do
-            convert "$f" -resize 854x -quality 55 /tmp/shot.jpg
+          for f in "$dir"/*mixer-screen*.png "$dir"/*pack-screen-after*.png; do
+            [ -f "$f" ] || continue
+            convert "$f" -resize 800x -quality 40 /tmp/shot.jpg
             echo "BEGIN_SHOT $(basename "$f")"
             base64 -w 4000 /tmp/shot.jpg
             echo "END_SHOT"
