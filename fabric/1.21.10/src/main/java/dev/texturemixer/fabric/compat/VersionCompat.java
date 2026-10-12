@@ -7,6 +7,7 @@ import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.texture.TextureManager;
 import net.minecraft.resource.ResourcePackManager;
+import net.minecraft.resource.ResourcePackProfile;
 import net.minecraft.util.Identifier;
 
 import java.util.ArrayList;
@@ -44,6 +45,11 @@ public final class VersionCompat {
     /** Enabled pack ids, lowest priority first. */
     public static List<String> enabledPackIds(ResourcePackManager manager) {
         return new ArrayList<>(manager.getEnabledIds());
+    }
+
+    /** Id of a pack profile, as stored in options.txt. */
+    public static String profileId(ResourcePackProfile profile) {
+        return profile.getId();
     }
 
     /** Uploads an image as a texture (takes ownership of the image). Render thread only. */

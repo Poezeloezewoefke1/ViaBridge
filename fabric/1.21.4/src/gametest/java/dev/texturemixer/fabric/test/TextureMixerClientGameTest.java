@@ -83,6 +83,8 @@ public class TextureMixerClientGameTest implements FabricClientGameTest {
             check(index.problems().stream().anyMatch(p -> p.packName().equals("TM Broken.zip") && p.severity() == PackProblem.Severity.ERROR),
                     "broken zip was not reported");
             check(index.size() > 1000, "vanilla textures were not indexed (" + index.size() + ")");
+            check(index.source("programmer_art") != null && index.get(STONE).variant("programmer_art") != null,
+                    "the built-in Programmer Art pack is not offered as a source");
 
             MixerSession session = TextureMixerManager.get().session();
             session.resetAll();

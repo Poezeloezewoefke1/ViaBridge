@@ -16,25 +16,42 @@ import java.io.InputStream;
 import java.io.UncheckedIOException;
 
 /**
- * Minecraft's own textures, read through the game's built-in resource pack. Offered as
- * the "Minecraft (default)" choice so a texture can be forced back to vanilla even
- * when another enabled pack changes it.
+ * A pack that comes from the game rather than the resourcepacks folder: Minecraft's own
+ * textures (offered as "Minecraft (default)", so a texture can be forced back to vanilla
+ * even when another enabled pack changes it), the built-in optional packs such as
+ * Programmer Art, and the resources inside installed mods.
  */
-public final class VanillaPackSource implements PackSource {
+public final class GamePackSource implements PackSource {
     private final ResourcePack pack;
+    private final String id;
+    private final String name;
+    private final boolean ownsPack;
 
-    public VanillaPackSource(ResourcePack pack) {
+    private GamePackSource(ResourcePack pack, String id, String name, boolean ownsPack) {
         this.pack = pack;
+        this.id = id;
+        this.name = name;
+        this.ownsPack = ownsPack;
+    }
+
+    /** Minecraft's default textures. The pack belongs to the game and is never closed here. */
+    public static GamePackSource vanilla(ResourcePack pack) {
+        return new GamePackSource(pack, TextureMixerConstants.VANILLA_SOURCE_ID, "Minecraft", false);
+    }
+
+    /** A pack opened from a pack profile; closed together with the texture index. */
+    public static GamePackSource opened(ResourcePack pack, String id, String name) {
+        return new GamePackSource(pack, id, name, true);
     }
 
     @Override
     public String id() {
-        return TextureMixerConstants.VANILLA_SOURCE_ID;
+        return id;
     }
 
     @Override
     public String displayName() {
-        return "Minecraft";
+        return name;
     }
 
     @Override
@@ -71,7 +88,7 @@ public final class VanillaPackSource implements PackSource {
     public InputStream open(String path) throws IOException {
         InputSupplier<InputStream> supplier = supplier(path);
         if (supplier == null) {
-            throw new FileNotFoundException(path + " in Minecraft");
+            throw new FileNotFoundException(path + " in " + name);
         }
         return supplier.get();
     }
@@ -100,6 +117,13 @@ public final class VanillaPackSource implements PackSource {
 
     @Override
     public String fingerprint() {
-        return "vanilla";
+        return "game:" + id;
+    }
+
+    @Override
+    public void close() {
+        if (ownsPack) {
+            pack.close();
+        }
     }
 }

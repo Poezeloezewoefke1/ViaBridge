@@ -19,13 +19,14 @@ import dev.texturemixer.core.util.BackgroundExecutor;
 import dev.texturemixer.core.util.Log;
 import dev.texturemixer.fabric.compat.VersionCompat;
 import dev.texturemixer.fabric.mixin.PackScreenAccessor;
-import dev.texturemixer.fabric.pack.VanillaPackSource;
+import dev.texturemixer.fabric.pack.GamePackSource;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.screen.pack.PackScreen;
 import net.minecraft.client.gui.screen.pack.ResourcePackOrganizer;
 import net.minecraft.resource.ResourcePackManager;
+import net.minecraft.resource.ResourcePackProfile;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -108,8 +109,9 @@ public final class TextureMixerManager {
     }
 
     /**
-     * Returns an index of every installed pack. Reuses the previous one when the
-     * resourcepacks folder has not changed; otherwise scans in the background.
+     * Returns an index of every available pack: Minecraft's own textures, the game's
+     * built-in and mod packs, and everything in the resourcepacks folder. Reuses the
+     * previous index when none of these changed; otherwise scans in the background.
      * The future completes on the render thread.
      */
     public CompletableFuture<TextureIndex> refreshIndex(boolean force) {
@@ -118,12 +120,17 @@ public final class TextureMixerManager {
         }
         Path directory = resourcePackDirectory();
         TextureIndex previous = index;
-        VanillaPackSource vanilla = new VanillaPackSource(client.getDefaultResourcePack());
+        GamePackSource vanilla = GamePackSource.vanilla(client.getDefaultResourcePack());
+        List<ResourcePackProfile> gameProfiles = gameProfiles();
+        StringBuilder gameIds = new StringBuilder();
+        for (ResourcePackProfile profile : gameProfiles) {
+            gameIds.append(VersionCompat.profileId(profile)).append(',');
+        }
         cancelScan = false;
         scanStatus = "Checking resource packs";
 
         CompletableFuture<TextureIndex> background = CompletableFuture.supplyAsync(() -> {
-            String fingerprint = PackScanner.fingerprint(directory);
+            String fingerprint = gameIds + "|" + PackScanner.fingerprint(directory);
             if (!force && previous != null && fingerprint.equals(previous.fingerprint())) {
                 return previous;
             }
@@ -131,6 +138,7 @@ public final class TextureMixerManager {
             ScanResult result = PackScanner.scan(directory);
             List<PackSource> sources = new ArrayList<>();
             sources.add(vanilla);
+            sources.addAll(openGamePacks(gameProfiles, result.problems()));
             sources.addAll(result.packs());
             try {
                 TextureIndex built = new TextureIndexer(VersionCompat.packFormat(),
@@ -140,7 +148,13 @@ public final class TextureMixerManager {
                 Log.LOGGER.info("Texture scan finished in {} ms", (System.nanoTime() - start) / 1_000_000);
                 return built;
             } catch (RuntimeException e) {
-                result.close();
+                for (PackSource source : sources) {
+                    try {
+                        source.close();
+                    } catch (IOException closeFailure) {
+                        e.addSuppressed(closeFailure);
+                    }
+                }
                 throw e;
             }
         }, BackgroundExecutor.IO);
@@ -166,6 +180,38 @@ public final class TextureMixerManager {
             }
         });
         return scan;
+    }
+
+    /**
+     * Packs the game provides besides the resourcepacks folder: the built-in optional
+     * packs (Programmer Art, High Contrast) and one pack per mod with resources. Fabric's
+     * "Fabric Mods" group is skipped because it only repeats the per-mod packs.
+     */
+    private List<ResourcePackProfile> gameProfiles() {
+        List<ResourcePackProfile> profiles = new ArrayList<>();
+        for (ResourcePackProfile profile : client.getResourcePackManager().getProfiles()) {
+            String id = VersionCompat.profileId(profile);
+            if (id.startsWith("file/") || id.equals(TextureMixerConstants.VANILLA_SOURCE_ID) || id.equals("fabric")) {
+                continue;
+            }
+            profiles.add(profile);
+        }
+        return profiles;
+    }
+
+    private static List<PackSource> openGamePacks(List<ResourcePackProfile> profiles, List<PackProblem> problems) {
+        List<PackSource> sources = new ArrayList<>();
+        for (ResourcePackProfile profile : profiles) {
+            String id = VersionCompat.profileId(profile);
+            String name = profile.getDisplayName().getString();
+            try {
+                sources.add(GamePackSource.opened(profile.createResourcePack(), id, name));
+            } catch (RuntimeException e) {
+                Log.LOGGER.warn("Could not open built-in pack {}", id, e);
+                problems.add(PackProblem.warning(name, "Built-in pack could not be opened: " + e.getMessage()));
+            }
+        }
+        return sources;
     }
 
     /** Stops a running scan; used when the game shuts down. */

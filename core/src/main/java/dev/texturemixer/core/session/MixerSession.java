@@ -1,6 +1,8 @@
 package dev.texturemixer.core.session;
 
 import dev.texturemixer.core.TextureMixerConstants;
+import dev.texturemixer.core.pack.PackKind;
+import dev.texturemixer.core.pack.PackSource;
 import dev.texturemixer.core.profile.ProfileStore;
 import dev.texturemixer.core.selection.SelectionHistory;
 import dev.texturemixer.core.selection.Selections;
@@ -117,7 +119,7 @@ public final class MixerSession {
         return onlyChanged;
     }
 
-    /** Whether to also list textures that no installed pack changes. */
+    /** Whether to also list textures that have only one version (normally hidden). */
     public void setIncludeUnmodded(boolean includeUnmodded) {
         if (this.includeUnmodded != includeUnmodded) {
             this.includeUnmodded = includeUnmodded;
@@ -169,7 +171,7 @@ public final class MixerSession {
     }
 
     private boolean matchesBase(TextureEntry entry, String[] terms) {
-        if (!includeUnmodded && entry.packCount() == 0 && selections.get(entry.id()) == null) {
+        if (!includeUnmodded && !worthListing(entry) && selections.get(entry.id()) == null) {
             return false;
         }
         if (onlyChanged && selections.get(entry.id()) == null) {
@@ -182,6 +184,24 @@ public final class MixerSession {
             }
         }
         return true;
+    }
+
+    /**
+     * Whether the default view lists a texture: it has more than one version to choose
+     * from, or a pack in the resourcepacks folder has it. Textures only one built-in or
+     * mod pack provides would otherwise flood the list.
+     */
+    private boolean worthListing(TextureEntry entry) {
+        if (entry.variants().size() > 1) {
+            return true;
+        }
+        for (TextureVariant variant : entry.variants()) {
+            PackSource source = index.source(variant.sourceId());
+            if (source != null && source.kind() != PackKind.BUILTIN) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean anySourceMatches(TextureEntry entry, String term) {
