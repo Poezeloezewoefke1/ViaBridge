@@ -16,7 +16,7 @@ import java.util.List;
  * Explains, per pack, what could not be read or may not look right, so a pack that
  * "doesn't show up" has a visible reason instead of failing silently.
  */
-public class ProblemsScreen extends Screen {
+public class ProblemsScreen extends InputScreen {
     private final Screen parent;
     private final List<PackProblem> problems;
     private final List<Line> lines = new ArrayList<>();
@@ -73,15 +73,8 @@ public class ProblemsScreen extends Screen {
         context.disableScissor();
     }
 
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        return onScroll(verticalAmount);
-    }
-
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        return onScroll(amount);
-    }
-
-    private boolean onScroll(double amount) {
+    @Override
+    protected boolean onMouseScrolled(double mouseX, double mouseY, double amount) {
         int max = Math.max(0, lines.size() * 10 - (bottom - top));
         scroll = Math.max(0, Math.min(max, scroll - (int) (amount * 20)));
         return true;

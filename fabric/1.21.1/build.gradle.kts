@@ -25,6 +25,7 @@ sourceSets {
     main {
         java.srcDir(rootProject.file("core/src/main/java"))
         java.srcDir(rootProject.file("fabric/common/src/main/java"))
+        java.srcDir(rootProject.file("fabric/input-legacy/src/main/java"))
         resources.srcDir(rootProject.file("fabric/common/src/main/resources"))
     }
 }

@@ -33,7 +33,7 @@ import java.util.concurrent.CompletionException;
  * Right: every available version of the clicked texture; clicking one picks it. All state
  * lives in {@link MixerSession}; this class only lays out, draws and forwards input.
  */
-public class TextureMixerScreen extends Screen {
+public class TextureMixerScreen extends InputScreen {
     private static final int CELL = 20;
     private static final int ROW = 22;
     private static final int MARGIN = 6;
@@ -585,10 +585,7 @@ public class TextureMixerScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button)) {
-            return true;
-        }
+    protected boolean onMouseClicked(double mouseX, double mouseY, int button) {
         if (session.index() == null) {
             return false;
         }
@@ -621,18 +618,17 @@ public class TextureMixerScreen extends Screen {
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+    protected boolean onMouseDragged(double mouseX, double mouseY, int button) {
         if (draggingScrollbar) {
             scrollTo(mouseY);
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
+        return false;
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    protected void onMouseReleased() {
         draggingScrollbar = false;
-        return super.mouseReleased(mouseX, mouseY, button);
     }
 
     private void scrollTo(double mouseY) {
@@ -645,17 +641,8 @@ public class TextureMixerScreen extends Screen {
         clampScroll();
     }
 
-    /** Minecraft 1.20.2 and newer. */
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        return onScroll(mouseX, mouseY, verticalAmount);
-    }
-
-    /** Minecraft 1.20.1 and older. */
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        return onScroll(mouseX, mouseY, amount);
-    }
-
-    private boolean onScroll(double mouseX, double mouseY, double amount) {
+    @Override
+    protected boolean onMouseScrolled(double mouseX, double mouseY, double amount) {
         if (mouseX >= gridX && mouseX < gridX + gridWidth + SCROLLBAR && mouseY >= gridY && mouseY < gridY + gridHeight) {
             gridScroll -= (int) (amount * CELL * 2);
             clampScroll();
@@ -671,9 +658,7 @@ public class TextureMixerScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        boolean control = (modifiers & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-        boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
+    protected boolean onKeyPressed(int keyCode, boolean control, boolean shift) {
         if (control && keyCode == GLFW.GLFW_KEY_Z && session.index() != null && !busy) {
             if (shift) {
                 session.redo();
@@ -695,7 +680,7 @@ public class TextureMixerScreen extends Screen {
             startScanForced();
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return false;
     }
 
     private void startScanForced() {

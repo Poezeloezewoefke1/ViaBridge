@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "texturemixer-gametest",
+  "version": "1.0.0",
+  "name": "Texture Mixer game tests",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["dev.texturemixer.fabric.test.TextureMixerClientGameTest"]
+  },
+  "depends": {
+    "texturemixer": "*",
+    "fabric-client-gametest-api-v1": "*"
+  }
+}

@@ -29,6 +29,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - mc: "1.21.11"
+            gametest: true
           - mc: "1.21.4"
             gametest: true
           # Fabric's client game test API only exists from 1.21.4 on; older versions
@@ -44,6 +46,14 @@ jobs:
           java-version: "21"
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v4
+
+      - name: Show published Fabric versions for this Minecraft version
+        run: |
+          mc="${{ matrix.mc }}"
+          echo "fabric-api: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -oE "<version>[^<]*\+$mc</version>" | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
+          echo "yarn: $(curl -s https://maven.fabricmc.net/net/fabricmc/yarn/maven-metadata.xml | grep -oE "<version>$mc\+build\.[0-9]+</version>" | sed 's/<[^>]*>//g' | tail -2 | tr '\n' ' ')"
+          echo "loader: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml | grep -oE '<release>[^<]*' | sed 's/<release>//')"
+          echo "loom: $(curl -s https://maven.fabricmc.net/fabric-loom/fabric-loom.gradle.plugin/maven-metadata.xml | grep -oE '<version>1\.[0-9]+-SNAPSHOT</version>' | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
 
       - name: Build mod jar
         run: ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:build --stacktrace

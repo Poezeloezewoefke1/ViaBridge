@@ -18,7 +18,7 @@ import java.util.List;
  * rename and delete them. Switching only changes which selections are being edited;
  * press Apply on the main screen to put a profile's textures in game.
  */
-public class ProfilesScreen extends Screen {
+public class ProfilesScreen extends InputScreen {
     private static final int ROW = 18;
 
     private final Screen parent;
@@ -194,10 +194,7 @@ public class ProfilesScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (super.mouseClicked(mouseX, mouseY, button)) {
-            return true;
-        }
+    protected boolean onMouseClicked(double mouseX, double mouseY, int button) {
         if (mouseX >= listX && mouseX < listX + listWidth && mouseY >= listY && mouseY < listY + listHeight) {
             int i = (int) (mouseY - listY + scroll) / ROW;
             List<String> names = session.profiles().names();
@@ -214,15 +211,8 @@ public class ProfilesScreen extends Screen {
         return false;
     }
 
-    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
-        return onScroll(verticalAmount);
-    }
-
-    public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
-        return onScroll(amount);
-    }
-
-    private boolean onScroll(double amount) {
+    @Override
+    protected boolean onMouseScrolled(double mouseX, double mouseY, double amount) {
         int max = Math.max(0, session.profiles().names().size() * ROW - listHeight);
         scroll = Math.max(0, Math.min(max, scroll - (int) (amount * ROW)));
         return true;
