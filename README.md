@@ -58,11 +58,14 @@ Requires [Fabric Loader](https://fabricmc.net/use/) and [Fabric API](https://mod
    does.
 4. Browse the grid. You can search by texture name or pack name, use the category tabs
    (Blocks, Items, Entities, Armor, GUI, Particles, Other), and switch **Show:**
-   between textures packs change, your own picks, or every texture.
+   between textures packs change, your own picks, or every texture. Hover over a texture
+   for a larger preview. Packs you add to the folder while the screen is open show up
+   within a few seconds.
 5. Click a texture. The right panel lists every version of it with a preview:
    - **Keep unchanged**: whatever your enabled packs (or Minecraft) show today.
    - **Minecraft (default)**: forces the vanilla texture, even over your enabled packs.
-   - each pack that has the texture, with its resolution and an "animated" tag.
+   - each pack that has the texture, with its resolution, an "animated" tag, and
+     "in use now" / "enabled pack" tags. Animated textures play in these previews.
 
    Click one to pick it. Right-click a texture in the grid to set it back to
    "unchanged". A green corner mark shows a pack pick; a gold mark shows a Minecraft
@@ -105,6 +108,9 @@ Other buttons:
   version, files Minecraft rejects, ...).
 - **F5** rescans every pack from scratch. Normally only packs whose files changed are
   re-read; everything else comes from the last scan.
+
+Texture Mixer is translated into English, Dutch, German, French and Spanish, and
+follows Minecraft's language setting.
 
 ## What it handles
 

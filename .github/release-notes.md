@@ -3,6 +3,19 @@
 Mix individual textures from all your installed resource packs into one custom pack,
 from **Options → Resource Packs → Mix Textures**.
 
+### New in 0.2.0
+
+- **Use \<pack\> for all listed**: pick one pack for a whole category or search result in
+  one step, then override single textures.
+- Keyboard control: arrow keys, 1-9 to pick a version, Delete to reset, Ctrl+S to apply.
+- Leaving with unapplied picks asks whether to apply them first.
+- Hover cards with a large preview; animated textures play in the version list.
+- Packs added to the folder while the screen is open appear by themselves.
+- Programmer Art, High Contrast and the textures inside mods are sources too.
+- Much faster rescans (only changed packs are read again), packs are read in parallel,
+  and previews use far less video memory.
+- Translations: Dutch, German, French, Spanish.
+
 ### Which file do I download?
 
 Pick the jar whose Minecraft range contains your version, and install it in
