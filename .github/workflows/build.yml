@@ -48,7 +48,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build mod jar
-        run: ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:build
+        run: ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:build 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
 
       - name: Check jar contents
         run: |
@@ -67,7 +67,7 @@ jobs:
 
       - name: Run in-game tests
         if: matrix.gametest
-        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:runClientGameTest
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:runClientGameTest 2>&1 | tee gametest.log; exit ${PIPESTATUS[0]}
 
       # Screenshots are also printed (small JPEGs, base64) so they can be checked from the log.
       - name: Print game test screenshots
@@ -101,6 +101,14 @@ jobs:
             fabric/${{ matrix.mc }}/build/run/clientGameTest/screenshots/
             fabric/${{ matrix.mc }}/build/run/clientGameTest/logs/latest.log
           if-no-files-found: ignore
+
+      # Last step, so the cause of a failure is at the end of the job log.
+      - name: Summarize failure
+        if: failure()
+        run: |
+          cat build.log gametest.log 2>/dev/null \
+            | grep -E "error:|What went wrong|^> |Exception|AssertionError|FAILED|Caused by" \
+            | grep -vE "^\s+at |ALSA|OpenAL|SoundSystem|TM Broken" | head -60 || true
 
   release:
     name: Publish release
