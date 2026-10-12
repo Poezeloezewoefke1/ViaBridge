@@ -13,6 +13,10 @@ public final class BackgroundExecutor {
     /** Scanning and pack generation. One thread: these jobs touch the same files. */
     public static final ExecutorService IO = Executors.newSingleThreadExecutor(factory("TextureMixer-IO"));
 
+    /** Indexing packs in parallel; one thread per pack being read, up to four. */
+    public static final ExecutorService INDEX = Executors.newFixedThreadPool(
+            Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() - 1)), factory("TextureMixer-Index"));
+
     /** Preview loading. A couple of threads keep scrolling responsive on big packs. */
     public static final ExecutorService PREVIEWS = Executors.newFixedThreadPool(2, factory("TextureMixer-Preview"));
 

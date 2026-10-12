@@ -3,6 +3,7 @@ package dev.texturemixer.fabric;
 import dev.texturemixer.core.TextureMixerConstants;
 import dev.texturemixer.core.pack.PackSource;
 import dev.texturemixer.core.texture.TextureIndex;
+import dev.texturemixer.core.texture.TextureVariant;
 import dev.texturemixer.core.util.BackgroundExecutor;
 import dev.texturemixer.core.util.BoundedReader;
 import dev.texturemixer.core.util.Log;
@@ -21,13 +22,17 @@ import java.util.Map;
  * GPU textures for the previews in the selection screen.
  *
  * <p>Each (pack, file) pair is decoded at most once and only when it is actually on
- * screen. Reading and decoding happen on a background thread; only the upload runs on
- * the render thread. Least-recently-drawn previews are released once the cache passes
- * a size budget, and everything is released when the screen closes.
+ * screen. Reading, decoding and shrinking happen on a background thread; only the upload
+ * runs on the render thread. Only the first animation frame is kept, scaled down to at
+ * most {@value #MAX_THUMBNAIL} pixels, so a 512x HD pack or a long animation strip costs
+ * no more GPU memory than a small texture. Least-recently-drawn previews are released
+ * once the cache passes a size budget, and everything is released when the screen closes.
  */
 public final class PreviewCache {
-    private static final int MAX_ENTRIES = 512;
-    private static final long MAX_PIXELS = 24L * 1024 * 1024;
+    private static final int MAX_ENTRIES = 768;
+    private static final long MAX_PIXELS = 8L * 1024 * 1024;
+    /** Largest preview side. Previews are drawn at most 32 GUI pixels wide (128 real pixels at scale 4). */
+    static final int MAX_THUMBNAIL = 128;
     /** Requests not drawn for this many frames are dropped before decoding (fast scrolling). */
     private static final long STALE_FRAMES = 30;
 
@@ -51,21 +56,25 @@ public final class PreviewCache {
      * Returns the loaded preview for a file in a pack, or {@code null} while it is
      * loading (or if it could not be decoded). Starts loading on first request.
      */
-    public Preview get(TextureIndex index, String sourceId, String path) {
+    public Preview get(TextureIndex index, TextureVariant variant) {
+        String sourceId = variant.sourceId();
+        String path = variant.filePath();
         String key = sourceId + "\n" + path;
         Slot slot = slots.get(key);
         if (slot == null) {
             slot = new Slot();
             slots.put(key, slot);
             slot.lastFrame = frame;
-            load(index, key, slot, sourceId, path);
+            load(index, key, slot, variant);
             return null;
         }
         slot.lastFrame = frame;
         return slot.preview;
     }
 
-    private void load(TextureIndex index, String key, Slot slot, String sourceId, String path) {
+    private void load(TextureIndex index, String key, Slot slot, TextureVariant variant) {
+        String sourceId = variant.sourceId();
+        String path = variant.filePath();
         int expectedGeneration = generation;
         PackSource source = index.source(sourceId);
         if (source == null) {
@@ -84,7 +93,8 @@ public final class PreviewCache {
             NativeImage image;
             try (InputStream in = source.open(path)) {
                 byte[] bytes = BoundedReader.readAll(in, TextureMixerConstants.MAX_ASSET_BYTES, path);
-                image = NativeImage.read(NativeImage.Format.RGBA, new ByteArrayInputStream(bytes));
+                image = thumbnail(NativeImage.read(NativeImage.Format.RGBA, new ByteArrayInputStream(bytes)),
+                        variant.frameWidth(), variant.frameHeight());
             } catch (Exception e) {
                 Log.LOGGER.debug("Preview of {} from {} failed", path, sourceId, e);
                 client.execute(() -> slot.failed = true);
@@ -92,6 +102,34 @@ public final class PreviewCache {
             }
             client.execute(() -> upload(expectedGeneration, key, slot, image));
         });
+    }
+
+    /**
+     * Cuts out the first animation frame and shrinks it to at most {@link #MAX_THUMBNAIL}
+     * pixels. Returns {@code image} itself when it is already small and not animated;
+     * otherwise {@code image} is closed and a new, smaller image returned.
+     */
+    static NativeImage thumbnail(NativeImage image, int frameWidth, int frameHeight) {
+        int width = frameWidth > 0 ? Math.min(frameWidth, image.getWidth()) : image.getWidth();
+        int height = frameHeight > 0 ? Math.min(frameHeight, image.getHeight()) : image.getHeight();
+        int largest = Math.max(width, height);
+        if (width == image.getWidth() && height == image.getHeight() && largest <= MAX_THUMBNAIL) {
+            return image;
+        }
+        try {
+            double scale = Math.min(1.0, (double) MAX_THUMBNAIL / largest);
+            int targetWidth = Math.max(1, (int) Math.round(width * scale));
+            int targetHeight = Math.max(1, (int) Math.round(height * scale));
+            NativeImage thumbnail = new NativeImage(targetWidth, targetHeight, false);
+            if (targetWidth == width && targetHeight == height) {
+                image.copyRect(thumbnail, 0, 0, 0, 0, width, height, false, false);
+            } else {
+                image.resizeSubRectTo(0, 0, width, height, thumbnail);
+            }
+            return thumbnail;
+        } finally {
+            image.close();
+        }
     }
 
     private void upload(int expectedGeneration, String key, Slot slot, NativeImage image) {

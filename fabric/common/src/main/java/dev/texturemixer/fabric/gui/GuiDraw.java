@@ -47,12 +47,13 @@ final class GuiDraw {
     }
 
     /**
-     * Draws the first frame of a texture variant, scaled to fit a {@code size}-pixel
-     * square while keeping its aspect ratio. Shows a checkerboard while it loads.
+     * Draws a texture variant's preview (its first animation frame), scaled to fit a
+     * {@code size}-pixel square while keeping its aspect ratio. Shows a checkerboard
+     * while it loads.
      */
     static void preview(DrawContext context, PreviewCache cache, TextureIndex index, TextureVariant variant,
                         int x, int y, int size) {
-        PreviewCache.Preview preview = variant == null ? null : cache.get(index, variant.sourceId(), variant.filePath());
+        PreviewCache.Preview preview = variant == null ? null : cache.get(index, variant);
         if (preview == null) {
             int half = size / 2;
             context.fill(x, y, x + size, y + size, 0xFF2A2A2A);
@@ -60,22 +61,16 @@ final class GuiDraw {
             context.fill(x + half, y + half, x + size, y + size, 0xFF3A3A3A);
             return;
         }
-        int frameWidth = Math.min(variant.frameWidth(), preview.width());
-        int frameHeight = Math.min(variant.frameHeight(), preview.height());
-        if (frameWidth <= 0 || frameHeight <= 0) {
-            frameWidth = preview.width();
-            frameHeight = preview.height();
-        }
+        int width = preview.width();
+        int height = preview.height();
         int drawWidth = size;
         int drawHeight = size;
-        if (frameWidth > frameHeight) {
-            drawHeight = Math.max(1, size * frameHeight / frameWidth);
-        } else if (frameHeight > frameWidth) {
-            drawWidth = Math.max(1, size * frameWidth / frameHeight);
+        if (width > height) {
+            drawHeight = Math.max(1, size * height / width);
+        } else if (height > width) {
+            drawWidth = Math.max(1, size * width / height);
         }
-        int drawX = x + (size - drawWidth) / 2;
-        int drawY = y + (size - drawHeight) / 2;
-        VersionCompat.drawTexture(context, preview.id(), drawX, drawY, drawWidth, drawHeight,
-                frameWidth, frameHeight, preview.width(), preview.height());
+        VersionCompat.drawTexture(context, preview.id(), x + (size - drawWidth) / 2, y + (size - drawHeight) / 2,
+                drawWidth, drawHeight, width, height, width, height);
     }
 }

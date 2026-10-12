@@ -7,6 +7,7 @@ import dev.texturemixer.core.pack.PackKind;
 import dev.texturemixer.core.pack.PackMetadata;
 import dev.texturemixer.core.pack.PackProblem;
 import dev.texturemixer.core.pack.PackSource;
+import dev.texturemixer.core.util.BackgroundExecutor;
 import dev.texturemixer.core.util.BoundedReader;
 import dev.texturemixer.core.util.Log;
 
@@ -21,6 +22,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BooleanSupplier;
 
 /**
@@ -47,24 +51,62 @@ public final class TextureIndexer {
     }
 
     public TextureIndex build(List<PackSource> sources, List<PackProblem> scanProblems, String fingerprint) {
-        List<PackProblem> problems = new ArrayList<>(scanProblems);
-        Map<TextureId, List<TextureVariant>> variants = new HashMap<>();
+        return build(sources, scanProblems, fingerprint, null);
+    }
 
-        for (int i = 0; i < sources.size(); i++) {
-            PackSource source = sources.get(i);
-            if (cancelled.getAsBoolean()) {
-                throw new CancellationException("Texture scan cancelled");
-            }
-            progress.onProgress(i, sources.size(), source.displayName());
-            try {
-                indexSource(source, variants, problems);
-            } catch (IOException | RuntimeException e) {
-                if (e instanceof CancellationException cancellation) {
-                    throw cancellation;
+    /**
+     * Builds the index. Packs are indexed in parallel; packs whose files have not changed
+     * since the previous scan are taken from {@code cache} instead of being read again.
+     *
+     * @param cache per-pack results from earlier scans, or {@code null}
+     */
+    public TextureIndex build(List<PackSource> sources, List<PackProblem> scanProblems, String fingerprint, IndexCache cache) {
+        List<PackProblem> problems = new ArrayList<>(scanProblems);
+        AtomicInteger done = new AtomicInteger();
+        progress.onProgress(0, sources.size(), sources.isEmpty() ? "" : sources.get(0).displayName());
+
+        List<Future<SourceResult>> futures = new ArrayList<>();
+        for (PackSource source : sources) {
+            futures.add(BackgroundExecutor.INDEX.submit(() -> {
+                if (cancelled.getAsBoolean()) {
+                    throw new CancellationException("Texture scan cancelled");
                 }
-                Log.LOGGER.warn("Failed to index {}", source, e);
-                problems.add(PackProblem.error(source.displayName(), "Textures could not be read: " + e.getMessage()));
+                String key = source.fingerprint() + "|" + gamePackFormat;
+                SourceResult result = cache == null ? null : cache.get(source.id(), key);
+                if (result == null) {
+                    result = indexSafely(source);
+                    if (cache != null) {
+                        cache.put(source.id(), key, result);
+                    }
+                }
+                progress.onProgress(done.incrementAndGet(), sources.size(), source.displayName());
+                return result;
+            }));
+        }
+
+        // Merge in source order, so variants keep the "Minecraft first, then packs" order.
+        Map<TextureId, List<TextureVariant>> variants = new HashMap<>();
+        try {
+            for (Future<SourceResult> future : futures) {
+                SourceResult result = future.get();
+                problems.addAll(result.problems());
+                for (TextureVariant variant : result.variants()) {
+                    variants.computeIfAbsent(variant.id(), key -> new ArrayList<>(2)).add(variant);
+                }
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            futures.forEach(future -> future.cancel(true));
+            throw new CancellationException("Texture scan interrupted");
+        } catch (ExecutionException e) {
+            futures.forEach(future -> future.cancel(true));
+            if (e.getCause() instanceof RuntimeException runtime) {
+                throw runtime;
+            }
+            throw new IllegalStateException(e.getCause());
+        }
+        if (cache != null) {
+            cache.retainOnly(sources);
         }
         progress.onProgress(sources.size(), sources.size(), "");
 
@@ -76,8 +118,25 @@ public final class TextureIndexer {
         return new TextureIndex(entries, sources, problems, fingerprint);
     }
 
-    private void indexSource(PackSource source, Map<TextureId, List<TextureVariant>> variants,
-                             List<PackProblem> problems) throws IOException {
+    private SourceResult indexSafely(PackSource source) {
+        try {
+            return indexSource(source);
+        } catch (IOException | RuntimeException e) {
+            if (e instanceof CancellationException cancellation) {
+                throw cancellation;
+            }
+            Log.LOGGER.warn("Failed to index {}", source, e);
+            return new SourceResult(List.of(), List.of(PackProblem.error(source.displayName(), "Textures could not be read: " + e.getMessage())));
+        }
+    }
+
+    /** What one pack contributes to the index. Immutable, so it can be cached between scans. */
+    public record SourceResult(List<TextureVariant> variants, List<PackProblem> problems) {
+    }
+
+    private SourceResult indexSource(PackSource source) throws IOException {
+        List<PackProblem> problems = new ArrayList<>();
+        List<TextureVariant> variants = new ArrayList<>();
         PackMetadata metadata = source.metadata();
         boolean builtin = source.kind() == PackKind.BUILTIN;
 
@@ -137,8 +196,8 @@ public final class TextureIndexer {
             if (legacyPath) {
                 legacy++;
             }
-            variants.computeIfAbsent(id, key -> new ArrayList<>()).add(new TextureVariant(
-                    source.id(), pngPath, metadataPath, info.width(), info.height(), frameWidth, frameHeight, animated, legacyPath));
+            variants.add(new TextureVariant(id, source.id(), pngPath, metadataPath, info.width(), info.height(),
+                    frameWidth, frameHeight, animated, legacyPath));
         }
         if (unreadable > 0) {
             problems.add(PackProblem.warning(source.displayName(), unreadable + " texture(s) are not valid PNG images and were skipped"));
@@ -147,6 +206,7 @@ public final class TextureIndexer {
             problems.add(PackProblem.warning(source.displayName(), legacy
                     + " texture(s) use pre-1.13 folder names (blocks/, items/). They are listed but this Minecraft version will not use them."));
         }
+        return new SourceResult(List.copyOf(variants), List.copyOf(problems));
     }
 
     private static void collect(PackSource source, String prefix, Map<TextureId, String> files,

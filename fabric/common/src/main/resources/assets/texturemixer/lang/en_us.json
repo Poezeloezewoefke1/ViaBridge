@@ -4,15 +4,12 @@
   "texturemixer.title": "Texture Mixer",
   "texturemixer.search": "Search textures or packs",
   "texturemixer.scanning": "Scanning resource packs...",
-
   "texturemixer.view.packs": "Show: Pack textures",
   "texturemixer.view.changed": "Show: My picks",
   "texturemixer.view.all": "Show: All textures",
   "texturemixer.view.tooltip": "Pack textures: textures at least one pack changes.\nMy picks: only textures you picked a version for.\nAll textures: every texture, including ones no pack changes.",
-
   "texturemixer.profile": "Profile: %s",
   "texturemixer.profile.tooltip": "Switch, create, rename or delete texture profiles.",
-
   "texturemixer.category.all": "All",
   "texturemixer.category.blocks": "Blocks",
   "texturemixer.category.items": "Items",
@@ -22,7 +19,6 @@
   "texturemixer.category.particles": "Particles",
   "texturemixer.category.other": "Other",
   "texturemixer.category.count": "%s textures",
-
   "texturemixer.undo": "Undo",
   "texturemixer.undo.tooltip": "Undo the last change (Ctrl+Z).",
   "texturemixer.redo": "Redo",
@@ -36,9 +32,8 @@
   "texturemixer.export.done.title": "Pack exported",
   "texturemixer.export.done.message": "Saved \"%s\" with %s texture(s). Open the exports folder?",
   "texturemixer.apply": "Apply",
-  "texturemixer.apply.tooltip": "Build \"Texture Mixer - Custom Pack\", enable it above your other packs and reload resources. Your other packs and their order are left as they are.",
-
-  "texturemixer.panel.hint": "Click a texture to see every version of it.",
+  "texturemixer.apply.tooltip": "Build \"Texture Mixer - Custom Pack\", enable it above your other packs and reload resources. Your other packs and their order are left as they are. (Ctrl+S)",
+  "texturemixer.panel.hint": "Click a texture (or use the arrow keys) to see every version of it. Number keys 1-9 pick a version.",
   "texturemixer.panel.unchanged": "Unchanged",
   "texturemixer.panel.picked": "Picked: %s",
   "texturemixer.option.unchanged": "Keep unchanged",
@@ -48,15 +43,12 @@
   "texturemixer.option.legacy": "Old pre-1.13 name, not used here",
   "texturemixer.source.vanilla": "Minecraft (default)",
   "texturemixer.source.none": "nothing",
-
   "texturemixer.tooltip.picked": "Picked: %s",
   "texturemixer.tooltip.unchanged": "Unchanged (now: %s)",
   "texturemixer.tooltip.versions": "%s version(s) available",
-
   "texturemixer.empty.no_packs": "No textures found. Put resource packs (folders or .zip files) in the resourcepacks folder; they do not need to be enabled.",
   "texturemixer.empty.no_changes": "You have not picked any textures in this profile yet.",
   "texturemixer.empty.no_match": "No textures match your search.",
-
   "texturemixer.status.summary": "%s listed - %s pack(s) found - %s picked",
   "texturemixer.status.applying": "Building and applying the pack...",
   "texturemixer.status.applied": "Applied %s texture(s).",
@@ -69,11 +61,9 @@
   "texturemixer.status.randomized": "Randomized %s texture(s). Undo to go back.",
   "texturemixer.status.scan_failed": "Scanning failed: %s",
   "texturemixer.status.rescanning": "Rescanning...",
-
   "texturemixer.problems": "%s problem(s)",
   "texturemixer.problems.title": "Resource pack problems",
   "texturemixer.problems.open_folder": "Open Pack Folder",
-
   "texturemixer.profiles.title": "Texture Profiles",
   "texturemixer.profiles.name": "Profile name",
   "texturemixer.profiles.use": "Use",
@@ -94,5 +84,14 @@
   "texturemixer.profiles.created": "Created \"%s\".",
   "texturemixer.profiles.renamed": "Renamed to \"%s\".",
   "texturemixer.profiles.deleted": "Deleted \"%s\".",
-  "texturemixer.profiles.type_name": "Type the new name in the box first."
+  "texturemixer.profiles.type_name": "Type the new name in the box first.",
+  "texturemixer.bulk.use": "Use %s for all %s listed",
+  "texturemixer.bulk.reset": "Set all %s listed back to unchanged",
+  "texturemixer.bulk.tooltip": "Applies this texture's pick to every texture currently listed that has a version from the same pack. Narrow the list first with the tabs or the search box. Can be undone.",
+  "texturemixer.status.bulk_used": "Picked %s for %s texture(s). Undo to go back.",
+  "texturemixer.status.bulk_reset": "Set %s texture(s) back to unchanged. Undo to go back.",
+  "texturemixer.leave.title": "Apply your picks?",
+  "texturemixer.leave.message": "Some picks are not in game yet. They are saved either way; apply them now to see them?",
+  "texturemixer.leave.later": "Not now",
+  "texturemixer.tooltip.right_click": "Right-click: back to unchanged"
 }

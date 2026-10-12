@@ -13,6 +13,7 @@ import dev.texturemixer.fabric.gui.TextureMixerScreen;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.TitleScreen;
 import net.minecraft.client.gui.screen.pack.PackScreen;
 import net.minecraft.resource.Resource;
@@ -142,11 +143,27 @@ public class TextureMixerClientGameTest implements FabricClientGameTest {
         check(Files.exists(Path.of(exported.target())) && exported.written() == 5, "export failed: " + exported);
         LOG.info("Exported {}", exported.target());
 
-        // 5. Back to the pack screen and confirm it: the generated pack must stay enabled.
+        // 5. Change a pick and leave: the screen offers to apply first, and applying works.
+        context.runOnClient(client -> TextureMixerManager.get().session().choose(SWORD, BLUE));
         context.clickScreenButton("gui.done");
+        context.waitForScreen(ConfirmScreen.class);
+        context.takeScreenshot("texturemixer-4-apply-prompt");
+        context.clickScreenButton("texturemixer.apply");
         context.waitForScreen(PackScreen.class);
+        context.waitFor(client -> client.getOverlay() == null, 20 * 180);
+        context.runOnClient(client -> {
+            try {
+                check(Arrays.equals(Files.readAllBytes(packDir.resolve(TextureMixerConstants.GENERATED_PACK_NAME).resolve(SWORD.assetPath())),
+                        TestPacks.BLUE_32), "applying from the leave prompt did not update the pack");
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+            check(!TextureMixerManager.get().session().hasUnappliedChanges(), "picks still marked as not applied");
+        });
+
+        // 6. Confirm the pack screen: the generated pack must stay enabled.
         context.waitTicks(5);
-        context.takeScreenshot("texturemixer-4-pack-screen-after-apply");
+        context.takeScreenshot("texturemixer-5-pack-screen-after-apply");
         context.clickScreenButton("gui.done");
         context.waitForScreen(TitleScreen.class);
         context.waitFor(client -> client.getOverlay() == null, 20 * 180);

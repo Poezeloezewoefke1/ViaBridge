@@ -38,6 +38,8 @@ public final class MixerSession {
     private final Random random;
 
     private TextureIndex index;
+    /** Lower-case "id + pack names" per texture, built once per index so typing stays cheap. */
+    private Map<TextureId, String> searchText = Map.of();
     private Selections selections;
     private Selections lastApplied;
     private List<String> enabledPackIds = List.of();
@@ -60,6 +62,17 @@ public final class MixerSession {
 
     public void setIndex(TextureIndex index) {
         this.index = index;
+        Map<TextureId, String> text = new HashMap<>();
+        if (index != null) {
+            for (TextureEntry entry : index.entries()) {
+                StringBuilder builder = new StringBuilder(entry.id().toString());
+                for (TextureVariant variant : entry.variants()) {
+                    builder.append('\n').append(index.sourceName(variant.sourceId()).toLowerCase(Locale.ROOT));
+                }
+                text.put(entry.id(), builder.toString());
+            }
+        }
+        this.searchText = text;
         refilter();
     }
 
@@ -177,9 +190,9 @@ public final class MixerSession {
         if (onlyChanged && selections.get(entry.id()) == null) {
             return false;
         }
-        String id = entry.id().toString();
+        String text = searchText.getOrDefault(entry.id(), entry.id().toString());
         for (String term : terms) {
-            if (!id.contains(term) && !anySourceMatches(entry, term)) {
+            if (!text.contains(term)) {
                 return false;
             }
         }
@@ -198,15 +211,6 @@ public final class MixerSession {
         for (TextureVariant variant : entry.variants()) {
             PackSource source = index.source(variant.sourceId());
             if (source != null && source.kind() != PackKind.BUILTIN) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean anySourceMatches(TextureEntry entry, String term) {
-        for (TextureVariant variant : entry.variants()) {
-            if (index.sourceName(variant.sourceId()).toLowerCase(Locale.ROOT).contains(term)) {
                 return true;
             }
         }
@@ -257,6 +261,46 @@ public final class MixerSession {
     /** Picks {@code sourceId} for a texture; {@code null} returns it to "unchanged". */
     public void choose(TextureId id, String sourceId) {
         update(sourceId == null ? selections.without(id) : selections.with(id, sourceId));
+    }
+
+    /**
+     * Picks {@code sourceId} for every listed texture that it has a usable version of, or
+     * returns them all to "unchanged" when {@code sourceId} is {@code null}. One undo step.
+     *
+     * @return number of textures changed
+     */
+    public int chooseForVisible(String sourceId) {
+        Map<TextureId, String> choices = new HashMap<>(selections.asMap());
+        int changed = 0;
+        for (TextureEntry entry : visible) {
+            if (sourceId == null) {
+                if (choices.remove(entry.id()) != null) {
+                    changed++;
+                }
+                continue;
+            }
+            TextureVariant variant = entry.variant(sourceId);
+            if (variant != null && !variant.legacyPath() && !sourceId.equals(choices.put(entry.id(), sourceId))) {
+                changed++;
+            }
+        }
+        update(Selections.of(choices));
+        return changed;
+    }
+
+    /** How many listed textures {@link #chooseForVisible} would apply {@code sourceId} to. */
+    public int countVisibleWith(String sourceId) {
+        if (sourceId == null) {
+            return visible.size();
+        }
+        int count = 0;
+        for (TextureEntry entry : visible) {
+            TextureVariant variant = entry.variant(sourceId);
+            if (variant != null && !variant.legacyPath()) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public boolean canUndo() {

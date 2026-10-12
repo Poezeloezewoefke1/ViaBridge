@@ -67,9 +67,26 @@ Requires [Fabric Loader](https://fabricmc.net/use/) and [Fabric API](https://mod
    Click one to pick it. Right-click a texture in the grid to set it back to
    "unchanged". A green corner mark shows a pack pick; a gold mark shows a Minecraft
    default pick.
-6. Press **Apply**. Texture Mixer writes `Texture Mixer - Custom Pack` into the
+6. **To pick one pack for many textures at once**, narrow the list (a category tab, or
+   search for something like `ore`), pick that pack for one texture, then press
+   **Use \<pack\> for all N listed** under the versions list. Override single textures
+   afterwards as needed. This is one undo step.
+7. Press **Apply** (or Ctrl+S). Texture Mixer writes `Texture Mixer - Custom Pack` into the
    resourcepacks folder and enables it above your other packs. Then it reloads
-   resources. Your other packs, and the order you put them in, stay as they are.
+   resources. Your other packs, and the order you put them in, stay as they are. If you
+   leave with picks that aren't applied yet, it asks whether to apply them first.
+
+Keyboard:
+
+| Key | Action |
+|-----|--------|
+| Arrow keys | Move through the grid |
+| 1 - 9 | Pick the numbered version of the selected texture |
+| Delete / Backspace | Set the selected texture back to unchanged |
+| Ctrl+S | Apply |
+| Ctrl+Z, Ctrl+Y (or Ctrl+Shift+Z) | Undo, redo |
+| Ctrl+F | Jump to the search box |
+| F5 | Rescan all packs from scratch |
 
 Other buttons:
 
@@ -86,8 +103,8 @@ Other buttons:
 - **N problem(s)** shows up when a pack could not be read, or may not look right. It
   says why for each pack (broken ZIP, `pack.mcmeta` in a subfolder, made for another
   version, files Minecraft rejects, ...).
-- **F5** rescans the resourcepacks folder. It is also rescanned automatically whenever
-  its contents change.
+- **F5** rescans every pack from scratch. Normally only packs whose files changed are
+  re-read; everything else comes from the last scan.
 
 ## What it handles
 
@@ -104,8 +121,12 @@ Other buttons:
 - Malformed packs: broken ZIPs, ZIP entries with `..` or absolute paths, names
   Minecraft rejects, non-PNG data, oversized files. These are skipped and listed as
   problems. They never crash the scan.
-- Previews load on background threads, only for textures on screen, and each one is
-  decoded once. GPU memory for previews is capped and released when the screen closes.
+- Performance: packs are indexed in parallel on background threads, and a rescan only
+  reads packs whose files changed. Minecraft's own textures are read once per game
+  session. Previews load on background threads, only for textures on screen, and each
+  one is decoded once. Only the first animation frame is kept, shrunk to at most 128 px,
+  so HD packs and long animations stay cheap. Preview memory is capped and released
+  when the screen closes.
 - Safety: the generated pack is the only thing Texture Mixer ever replaces. It carries
   a marker in its `pack.mcmeta`. If a pack with the same name exists without the marker,
   Apply refuses and says so. The new pack is first built in `.minecraft/texturemixer/`

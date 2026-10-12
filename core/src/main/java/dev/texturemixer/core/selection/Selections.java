@@ -53,6 +53,26 @@ public final class Selections {
         return copy.isEmpty() ? EMPTY : new Selections(copy);
     }
 
+    /**
+     * Stable fingerprint of these choices (same value across game restarts), written into
+     * the generated pack so Texture Mixer can tell whether the pack is up to date.
+     */
+    public String digest() {
+        try {
+            java.security.MessageDigest sha = java.security.MessageDigest.getInstance("SHA-256");
+            for (Map.Entry<TextureId, String> choice : choices.entrySet()) {
+                sha.update((choice.getKey() + "=" + choice.getValue() + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            }
+            StringBuilder hex = new StringBuilder();
+            for (byte b : sha.digest()) {
+                hex.append(String.format("%02x", b));
+            }
+            return hex.substring(0, 16);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     public Map<TextureId, String> asMap() {
         return choices;
     }

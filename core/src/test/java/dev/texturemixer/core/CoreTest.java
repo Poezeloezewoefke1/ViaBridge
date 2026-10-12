@@ -96,8 +96,9 @@ class CoreTest {
     void scansFoldersAndZipsAndReportsBrokenPacks() throws IOException {
         Path dir = packs();
         try (TextureIndex index = index(dir)) {
-            assertEquals(List.of("file/Green Pack.zip", "file/Old Pack", "file/Red Pack"),
-                    index.sources().stream().map(s -> s.id()).toList());
+            assertEquals(List.of("file/Green Pack.zip", "file/Red Pack"),
+                    index.get(TextureId.parse("minecraft:block/stone")).variants().stream().map(v -> v.sourceId()).toList(),
+                    "variants keep pack order");
 
             TextureEntry stone = index.get(TextureId.parse("minecraft:block/stone"));
             assertNotNull(stone);
@@ -207,6 +208,11 @@ class CoreTest {
             String mcmeta = Files.readString(target.resolve("pack.mcmeta"));
             assertTrue(mcmeta.contains("\"pack_format\": 46") && mcmeta.contains("texturemixer"), mcmeta);
             assertTrue(DirectoryPackWriter.isGeneratedPack(target));
+            PackGenerator.GeneratedInfo info = PackGenerator.readGeneratedInfo(target);
+            assertEquals("Default", info.profile());
+            assertEquals(selections.digest(), info.selectionsDigest());
+            assertFalse(selections.digest().equals(Selections.EMPTY.digest()));
+            assertNull(PackGenerator.readGeneratedInfo(dir.resolve("Red Pack")));
 
             // Source packs are untouched.
             assertArrayEquals(TestPacks.png(16, 16, RED), Files.readAllBytes(dir.resolve("Red Pack/assets/minecraft/textures/block/stone.png")));
@@ -325,6 +331,58 @@ class CoreTest {
             assertTrue(session.selections().isEmpty());
             session.switchProfile("Default");
             assertFalse(session.selections().isEmpty());
+        }
+    }
+
+    @Test
+    void cachedRescanOnlyRereadsChangedPacks() throws IOException {
+        Path dir = packs();
+        dev.texturemixer.core.texture.IndexCache cache = new dev.texturemixer.core.texture.IndexCache();
+        TextureIndexer indexer = new TextureIndexer(FORMAT, (done, total, name) -> { }, () -> false);
+        ScanResult first = PackScanner.scan(dir);
+        try (TextureIndex index = indexer.build(first.packs(), first.problems(), "a", cache)) {
+            assertEquals(3, cache.size());
+            assertEquals(2, index.get(TextureId.parse("minecraft:block/stone")).packCount());
+        }
+
+        // Change one pack: its new texture must show up, the others come from the cache.
+        Files.write(dir.resolve("Red Pack/assets/minecraft/textures/block/dirt.png"), TestPacks.png(16, 16, RED));
+        ScanResult second = PackScanner.scan(dir);
+        try (TextureIndex index = indexer.build(second.packs(), second.problems(), "b", cache)) {
+            assertNotNull(index.get(TextureId.parse("minecraft:block/dirt")).variant("file/Red Pack"));
+            assertEquals(32, index.get(TextureId.parse("minecraft:block/stone")).variant("file/Green Pack.zip").width());
+            assertEquals(List.of("file/Green Pack.zip", "file/Red Pack"),
+                    index.get(TextureId.parse("minecraft:block/stone")).variants().stream().map(v -> v.sourceId()).toList(),
+                    "variants keep pack order");
+            assertTrue(index.problems().toString().contains("not valid PNG"), "cached problems must be kept");
+        }
+
+        // Removing a pack drops it from the cache.
+        Files.delete(dir.resolve("Old Pack/pack.mcmeta"));
+        ScanResult third = PackScanner.scan(dir);
+        try (TextureIndex ignored = indexer.build(third.packs(), third.problems(), "c", cache)) {
+            assertEquals(2, cache.size());
+        }
+    }
+
+    @Test
+    void bulkPickAndSearchByPackName() throws IOException {
+        Path dir = packs();
+        try (TextureIndex index = index(dir)) {
+            MixerSession session = new MixerSession(ProfileStore.load(temp.resolve("p.json")), new Random(1));
+            session.setIndex(index);
+            session.setCategory(TextureCategory.BLOCKS);
+            assertEquals(2, session.countVisibleWith("file/Green Pack.zip"));
+            assertEquals(2, session.chooseForVisible("file/Green Pack.zip"));
+            assertEquals("file/Green Pack.zip", session.choice(TextureId.parse("minecraft:block/stone")));
+            assertNull(session.choice(TextureId.parse("minecraft:block/water_still")), "only textures the pack has are picked");
+            session.undo();
+            assertTrue(session.selections().isEmpty(), "bulk pick is one undo step");
+
+            session.setCategory(null);
+            session.setQuery("green");
+            assertTrue(session.visible().stream().allMatch(e -> e.variant("file/Green Pack.zip") != null));
+            assertFalse(session.visible().isEmpty());
         }
     }
 

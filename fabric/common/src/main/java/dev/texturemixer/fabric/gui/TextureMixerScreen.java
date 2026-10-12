@@ -34,7 +34,6 @@ import java.util.concurrent.CompletionException;
  * lives in {@link MixerSession}; this class only lays out, draws and forwards input.
  */
 public class TextureMixerScreen extends InputScreen {
-    private static final int CELL = 20;
     private static final int ROW = 22;
     private static final int MARGIN = 6;
     private static final int SCROLLBAR = 6;
@@ -54,8 +53,13 @@ public class TextureMixerScreen extends InputScreen {
     private ButtonWidget randomButton;
     private ButtonWidget exportButton;
     private ButtonWidget applyButton;
+    private ButtonWidget bulkButton;
+    private int bulkRevision = -1;
+    private TextureEntry bulkEntry;
+    private boolean closeAfterApply;
     private final List<ButtonWidget> tabs = new ArrayList<>();
 
+    private int cell = 20;
     private int gridX;
     private int gridY;
     private int gridWidth;
@@ -64,6 +68,7 @@ public class TextureMixerScreen extends InputScreen {
     private int panelX;
     private int panelWidth;
     private int optionsY;
+    private int optionsBottom;
     private int statusY;
 
     private int gridScroll;
@@ -164,17 +169,23 @@ public class TextureMixerScreen extends InputScreen {
                 .dimensions(width - MARGIN - 100, statusY - 5, 100, 16)
                 .build());
 
-        // Main area
+        // Main area. Bigger cells when there is room for them.
+        cell = width >= 640 ? 26 : width >= 480 ? 22 : 20;
         gridX = MARGIN;
         gridY = tabY + 22;
         int mainBottom = statusY - 9;
-        gridHeight = Math.max(CELL, mainBottom - gridY);
+        gridHeight = Math.max(cell, mainBottom - gridY);
         int available = (int) ((width - 2 * MARGIN) * 0.58) - SCROLLBAR;
-        columns = Math.max(4, available / CELL);
-        gridWidth = columns * CELL;
+        columns = Math.max(4, available / cell);
+        gridWidth = columns * cell;
         panelX = gridX + gridWidth + SCROLLBAR + 8;
         panelWidth = width - MARGIN - panelX;
         optionsY = gridY + 44;
+        optionsBottom = gridY + gridHeight - 22;
+        bulkButton = addDrawableChild(ButtonWidget.builder(Text.empty(), b -> bulkPick())
+                .dimensions(panelX + 2, optionsBottom + 2, panelWidth - 4, 18)
+                .tooltip(Tooltip.of(Text.translatable("texturemixer.bulk.tooltip")))
+                .build());
 
         session.setEnabledPackIds(VersionCompat.enabledPackIds(client.getResourcePackManager()));
         clampScroll();
@@ -240,19 +251,18 @@ public class TextureMixerScreen extends InputScreen {
         randomButton.active = ready && !session.visible().isEmpty();
         exportButton.active = ready;
         applyButton.active = ready;
-        applyButton.setMessage(session.hasUnappliedChanges()
-                ? Text.translatable("texturemixer.apply").formatted(net.minecraft.util.Formatting.YELLOW)
-                : Text.translatable("texturemixer.apply"));
-        profileButton.setMessage(Text.translatable("texturemixer.profile", GuiDraw.trim(textRenderer, session.activeProfile(),
-                profileButton.getWidth() - 10 - textRenderer.getWidth(Text.translatable("texturemixer.profile", "").getString()))));
-        viewButton.setMessage(viewLabel());
-
         for (int i = 0; i < tabs.size(); i++) {
             tabs.get(i).active = session.category() != (i == 0 ? null : TextureCategory.values()[i - 1]);
         }
         if (tabsRevision != session.revision()) {
-            // Counting walks the whole index, so only redo it when something changed.
+            // Labels and counts only change with the session, so skip rebuilding them every frame.
             tabsRevision = session.revision();
+            applyButton.setMessage(session.hasUnappliedChanges()
+                    ? Text.translatable("texturemixer.apply").formatted(net.minecraft.util.Formatting.YELLOW)
+                    : Text.translatable("texturemixer.apply"));
+            profileButton.setMessage(Text.translatable("texturemixer.profile", GuiDraw.trim(textRenderer, session.activeProfile(),
+                    profileButton.getWidth() - 10 - textRenderer.getWidth(Text.translatable("texturemixer.profile", "").getString()))));
+            viewButton.setMessage(viewLabel());
             Map<TextureCategory, Integer> counts = session.categoryCounts();
             for (int i = 0; i < tabs.size(); i++) {
                 TextureCategory category = i == 0 ? null : TextureCategory.values()[i - 1];
@@ -260,6 +270,20 @@ public class TextureMixerScreen extends InputScreen {
                 tabs.get(i).setTooltip(Tooltip.of(Text.translatable("texturemixer.category.count", count)));
             }
         }
+
+        TextureEntry focused = index == null ? null : session.focusedEntry();
+        bulkButton.visible = focused != null && session.visible().size() > 1;
+        if (bulkButton.visible && (bulkRevision != session.revision() || bulkEntry != focused)) {
+            bulkRevision = session.revision();
+            bulkEntry = focused;
+            String choice = session.choice(focused.id());
+            int count = session.countVisibleWith(choice);
+            Text label = choice == null
+                    ? Text.translatable("texturemixer.bulk.reset", count)
+                    : Text.translatable("texturemixer.bulk.use", sourceName(index, choice), count);
+            bulkButton.setMessage(Text.literal(GuiDraw.trim(textRenderer, label.getString(), bulkButton.getWidth() - 8)));
+        }
+        bulkButton.active = !busy;
 
         int problems = index == null ? 0 : index.problems().size();
         problemsButton.visible = problems > 0;
@@ -286,7 +310,12 @@ public class TextureMixerScreen extends InputScreen {
                 setStatus(Text.translatable("texturemixer.status.apply_failed", message(error)), GuiDraw.RED);
             } else {
                 setStatus(resultText("texturemixer.status.applied", result), result.skipped().isEmpty() ? GuiDraw.GREEN : GuiDraw.GOLD);
+                if (closeAfterApply) {
+                    leave();
+                    return;
+                }
             }
+            closeAfterApply = false;
         }));
     }
 
@@ -312,6 +341,19 @@ public class TextureMixerScreen extends InputScreen {
                 client.setScreen(this);
             }, Text.translatable("texturemixer.export.done.title"), Text.translatable("texturemixer.export.done.message", file, result.written())));
         }));
+    }
+
+    /** Uses the focused texture's pick (or "unchanged") for every texture in the list. */
+    private void bulkPick() {
+        TextureEntry focused = session.focusedEntry();
+        if (focused == null) {
+            return;
+        }
+        String choice = session.choice(focused.id());
+        int changed = session.chooseForVisible(choice);
+        setStatus(choice == null
+                ? Text.translatable("texturemixer.status.bulk_reset", changed)
+                : Text.translatable("texturemixer.status.bulk_used", sourceName(session.index(), choice), changed), GuiDraw.GRAY);
     }
 
     private Text resultText(String key, GenerationResult result) {
@@ -340,8 +382,26 @@ public class TextureMixerScreen extends InputScreen {
         return cause.getMessage() != null ? cause.getMessage() : cause.getClass().getSimpleName();
     }
 
+    /** Asks whether to apply first when there are picks that are not in game yet. */
     @Override
     public void close() {
+        if (busy || session.index() == null || !session.hasUnappliedChanges()) {
+            leave();
+            return;
+        }
+        client.setScreen(new ConfirmScreen(apply -> {
+            client.setScreen(this);
+            if (apply) {
+                closeAfterApply = true;
+                apply();
+            } else {
+                leave();
+            }
+        }, Text.translatable("texturemixer.leave.title"), Text.translatable("texturemixer.leave.message"),
+                Text.translatable("texturemixer.apply"), Text.translatable("texturemixer.leave.later")));
+    }
+
+    private void leave() {
         session.saveAsync();
         previews.clear();
         client.setScreen(parent);
@@ -375,6 +435,9 @@ public class TextureMixerScreen extends InputScreen {
                 lines.add(Text.translatable("texturemixer.tooltip.unchanged", sourceName(index, session.currentSource(hovered))).formatted(net.minecraft.util.Formatting.GRAY));
             }
             lines.add(Text.translatable("texturemixer.tooltip.versions", hovered.variants().size()).formatted(net.minecraft.util.Formatting.DARK_GRAY));
+            if (choice != null) {
+                lines.add(Text.translatable("texturemixer.tooltip.right_click").formatted(net.minecraft.util.Formatting.DARK_GRAY));
+            }
             context.drawTooltip(textRenderer, lines, mouseX, mouseY);
         }
     }
@@ -403,9 +466,9 @@ public class TextureMixerScreen extends InputScreen {
 
         context.enableScissor(gridX, gridY, gridX + gridWidth, gridY + gridHeight);
         TextureEntry focused = session.focusedEntry();
-        int firstRow = gridScroll / CELL;
-        int offset = gridScroll % CELL;
-        int visibleRows = gridHeight / CELL + 2;
+        int firstRow = gridScroll / cell;
+        int offset = gridScroll % cell;
+        int visibleRows = gridHeight / cell + 2;
         for (int row = 0; row < visibleRows; row++) {
             for (int column = 0; column < columns; column++) {
                 int i = (firstRow + row) * columns + column;
@@ -413,31 +476,31 @@ public class TextureMixerScreen extends InputScreen {
                     break;
                 }
                 TextureEntry entry = entries.get(i);
-                int x = gridX + column * CELL;
-                int y = gridY + row * CELL - offset;
-                boolean hover = mouseX >= x && mouseX < x + CELL && mouseY >= y && mouseY < y + CELL
+                int x = gridX + column * cell;
+                int y = gridY + row * cell - offset;
+                boolean hover = mouseX >= x && mouseX < x + cell && mouseY >= y && mouseY < y + cell
                         && mouseY >= gridY && mouseY < gridY + gridHeight;
                 if (hover) {
-                    context.fill(x, y, x + CELL, y + CELL, GuiDraw.HOVER);
+                    context.fill(x, y, x + cell, y + cell, GuiDraw.HOVER);
                 }
                 String effective = session.effectiveSource(entry);
                 TextureVariant variant = effective == null ? entry.variants().get(0) : entry.variant(effective);
-                GuiDraw.preview(context, previews, index, variant, x + 2, y + 2, CELL - 4);
+                GuiDraw.preview(context, previews, index, variant, x + 2, y + 2, cell - 4);
                 String choice = session.choice(entry.id());
                 if (choice != null) {
                     int color = TextureMixerConstants.VANILLA_SOURCE_ID.equals(choice) ? GuiDraw.GOLD : GuiDraw.GREEN;
-                    context.fill(x + CELL - 6, y + 1, x + CELL - 1, y + 6, 0xFF000000);
-                    context.fill(x + CELL - 5, y + 2, x + CELL - 2, y + 5, color);
+                    context.fill(x + cell - 6, y + 1, x + cell - 1, y + 6, 0xFF000000);
+                    context.fill(x + cell - 5, y + 2, x + cell - 2, y + 5, color);
                 }
                 if (focused != null && focused.id().equals(entry.id())) {
-                    GuiDraw.border(context, x, y, CELL, CELL, GuiDraw.WHITE);
+                    GuiDraw.border(context, x, y, cell, cell, GuiDraw.WHITE);
                 }
             }
         }
         context.disableScissor();
 
         // Scrollbar
-        int contentHeight = rows() * CELL;
+        int contentHeight = rows() * cell;
         int trackX = gridX + gridWidth;
         context.fill(trackX, gridY, trackX + SCROLLBAR, gridY + gridHeight, 0x40000000);
         if (contentHeight > gridHeight) {
@@ -473,17 +536,18 @@ public class TextureMixerScreen extends InputScreen {
 
         // Options
         List<Option> options = options(entry);
-        int listHeight = panelBottom - optionsY;
-        context.enableScissor(panelX, optionsY, panelX + panelWidth, panelBottom);
+        int listBottom = optionsBottom;
+        int listHeight = listBottom - optionsY;
+        context.enableScissor(panelX, optionsY, panelX + panelWidth, listBottom);
         for (int i = 0; i < options.size(); i++) {
             Option option = options.get(i);
             int y = optionsY + i * ROW - optionsScroll;
-            if (y + ROW < optionsY || y > panelBottom) {
+            if (y + ROW < optionsY || y > listBottom) {
                 continue;
             }
             boolean selected = option.sourceId == null ? choice == null : option.sourceId.equals(choice);
             boolean hover = option.enabled && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= y && mouseY < y + ROW
-                    && mouseY >= optionsY && mouseY < panelBottom;
+                    && mouseY >= optionsY && mouseY < listBottom;
             if (selected) {
                 context.fill(panelX + 1, y, panelX + panelWidth - 1, y + ROW - 1, GuiDraw.SELECTED);
                 GuiDraw.border(context, panelX + 1, y, panelWidth - 2, ROW - 1, GuiDraw.GREEN);
@@ -493,12 +557,13 @@ public class TextureMixerScreen extends InputScreen {
             GuiDraw.preview(context, previews, index, option.variant, panelX + 3, y + 2, ROW - 5);
             int labelX = panelX + ROW + 2;
             int labelWidth = panelWidth - ROW - 5;
-            GuiDraw.text(context, textRenderer, option.label, labelX, y + 2, labelWidth, option.enabled ? GuiDraw.WHITE : GuiDraw.DARK_GRAY);
+            String number = i < 9 ? (i + 1) + " " : "";
+            GuiDraw.text(context, textRenderer, number + option.label, labelX, y + 2, labelWidth, option.enabled ? GuiDraw.WHITE : GuiDraw.DARK_GRAY);
             GuiDraw.text(context, textRenderer, option.info, labelX, y + 12, labelWidth, option.infoColor);
         }
         context.disableScissor();
         if (options.size() * ROW > listHeight) {
-            GuiDraw.text(context, textRenderer, "↕", panelX + panelWidth - 8, panelBottom - 10, 8, GuiDraw.DARK_GRAY);
+            GuiDraw.text(context, textRenderer, "↕", panelX + panelWidth - 8, listBottom - 10, 8, GuiDraw.DARK_GRAY);
         }
     }
 
@@ -523,7 +588,21 @@ public class TextureMixerScreen extends InputScreen {
     private record Option(String sourceId, TextureVariant variant, String label, String info, int infoColor, boolean enabled) {
     }
 
+    private List<Option> cachedOptions = List.of();
+    private TextureEntry cachedOptionsEntry;
+    private int cachedOptionsRevision = -1;
+
+    /** The versions list; rebuilt only when the texture or something visible changed. */
     private List<Option> options(TextureEntry entry) {
+        if (entry != cachedOptionsEntry || session.revision() != cachedOptionsRevision) {
+            cachedOptions = buildOptions(entry);
+            cachedOptionsEntry = entry;
+            cachedOptionsRevision = session.revision();
+        }
+        return cachedOptions;
+    }
+
+    private List<Option> buildOptions(TextureEntry entry) {
         TextureIndex index = session.index();
         List<Option> options = new ArrayList<>();
         String current = session.currentSource(entry);
@@ -569,7 +648,7 @@ public class TextureMixerScreen extends InputScreen {
     }
 
     private void clampScroll() {
-        int max = Math.max(0, rows() * CELL - gridHeight);
+        int max = Math.max(0, rows() * cell - gridHeight);
         gridScroll = Math.max(0, Math.min(gridScroll, max));
     }
 
@@ -577,8 +656,8 @@ public class TextureMixerScreen extends InputScreen {
         if (mouseX < gridX || mouseX >= gridX + gridWidth || mouseY < gridY || mouseY >= gridY + gridHeight) {
             return null;
         }
-        int column = (int) (mouseX - gridX) / CELL;
-        int row = (int) (mouseY - gridY + gridScroll) / CELL;
+        int column = (int) (mouseX - gridX) / cell;
+        int row = (int) (mouseY - gridY + gridScroll) / cell;
         int i = row * columns + column;
         List<TextureEntry> entries = session.visible();
         return column < columns && i >= 0 && i < entries.size() ? entries.get(i) : null;
@@ -606,7 +685,7 @@ public class TextureMixerScreen extends InputScreen {
             return true;
         }
         TextureEntry focused = session.focusedEntry();
-        if (focused != null && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= optionsY && mouseY < gridY + gridHeight) {
+        if (focused != null && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= optionsY && mouseY < optionsBottom) {
             int i = (int) (mouseY - optionsY + optionsScroll) / ROW;
             List<Option> options = options(focused);
             if (i >= 0 && i < options.size() && options.get(i).enabled) {
@@ -632,7 +711,7 @@ public class TextureMixerScreen extends InputScreen {
     }
 
     private void scrollTo(double mouseY) {
-        int contentHeight = rows() * CELL;
+        int contentHeight = rows() * cell;
         if (contentHeight <= gridHeight) {
             return;
         }
@@ -644,13 +723,13 @@ public class TextureMixerScreen extends InputScreen {
     @Override
     protected boolean onMouseScrolled(double mouseX, double mouseY, double amount) {
         if (mouseX >= gridX && mouseX < gridX + gridWidth + SCROLLBAR && mouseY >= gridY && mouseY < gridY + gridHeight) {
-            gridScroll -= (int) (amount * CELL * 2);
+            gridScroll -= (int) (amount * cell * 2);
             clampScroll();
             return true;
         }
         TextureEntry focused = session.focusedEntry();
-        if (focused != null && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= optionsY && mouseY < gridY + gridHeight) {
-            int max = Math.max(0, options(focused).size() * ROW - (gridY + gridHeight - optionsY));
+        if (focused != null && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= optionsY && mouseY < optionsBottom) {
+            int max = Math.max(0, options(focused).size() * ROW - (optionsBottom - optionsY));
             optionsScroll = Math.max(0, Math.min(max, optionsScroll - (int) (amount * ROW)));
             return true;
         }
@@ -659,6 +738,16 @@ public class TextureMixerScreen extends InputScreen {
 
     @Override
     protected boolean onKeyPressed(int keyCode, boolean control, boolean shift) {
+        if (!control && search.isFocused()) {
+            return false; // typing in the search box
+        }
+        if (control && keyCode == GLFW.GLFW_KEY_S) {
+            apply();
+            return true;
+        }
+        if (!control && session.index() != null && !busy && handleNavigationKey(keyCode)) {
+            return true;
+        }
         if (control && keyCode == GLFW.GLFW_KEY_Z && session.index() != null && !busy) {
             if (shift) {
                 session.redo();
@@ -681,6 +770,56 @@ public class TextureMixerScreen extends InputScreen {
             return true;
         }
         return false;
+    }
+
+    /** Arrow keys move through the grid, 1-9 pick a version, Delete returns to unchanged. */
+    private boolean handleNavigationKey(int keyCode) {
+        List<TextureEntry> entries = session.visible();
+        if (entries.isEmpty()) {
+            return false;
+        }
+        TextureEntry focused = session.focusedEntry();
+        int index = focused == null ? -1 : entries.indexOf(focused);
+        int target = switch (keyCode) {
+            case GLFW.GLFW_KEY_LEFT -> index - 1;
+            case GLFW.GLFW_KEY_RIGHT -> index + 1;
+            case GLFW.GLFW_KEY_UP -> index - columns;
+            case GLFW.GLFW_KEY_DOWN -> index < 0 ? 0 : index + columns;
+            default -> Integer.MIN_VALUE;
+        };
+        if (target != Integer.MIN_VALUE) {
+            target = Math.max(0, Math.min(entries.size() - 1, target));
+            session.focus(entries.get(target).id());
+            optionsScroll = 0;
+            scrollToShow(target);
+            return true;
+        }
+        if (focused == null) {
+            return false;
+        }
+        if (keyCode >= GLFW.GLFW_KEY_1 && keyCode <= GLFW.GLFW_KEY_9) {
+            List<Option> options = options(focused);
+            int option = keyCode - GLFW.GLFW_KEY_1;
+            if (option < options.size() && options.get(option).enabled) {
+                session.choose(focused.id(), options.get(option).sourceId);
+            }
+            return true;
+        }
+        if (keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+            session.choose(focused.id(), null);
+            return true;
+        }
+        return false;
+    }
+
+    private void scrollToShow(int entryIndex) {
+        int top = (entryIndex / columns) * cell;
+        if (top < gridScroll) {
+            gridScroll = top;
+        } else if (top + cell > gridScroll + gridHeight) {
+            gridScroll = top + cell - gridHeight;
+        }
+        clampScroll();
     }
 
     private void startScanForced() {

@@ -13,6 +13,7 @@ import dev.texturemixer.core.pack.ScanResult;
 import dev.texturemixer.core.profile.ProfileStore;
 import dev.texturemixer.core.selection.Selections;
 import dev.texturemixer.core.session.MixerSession;
+import dev.texturemixer.core.texture.IndexCache;
 import dev.texturemixer.core.texture.TextureIndex;
 import dev.texturemixer.core.texture.TextureIndexer;
 import dev.texturemixer.core.util.BackgroundExecutor;
@@ -52,6 +53,7 @@ public final class TextureMixerManager {
     private final Path workDirectory;
     private final Path exportDirectory;
     private final PreviewCache previews;
+    private final IndexCache indexCache = new IndexCache();
 
     private ProfileStore profiles;
     private MixerSession session;
@@ -91,6 +93,14 @@ public final class TextureMixerManager {
         if (session == null) {
             profiles = ProfileStore.load(FabricLoader.getInstance().getConfigDir().resolve("texturemixer").resolve("profiles.json"));
             session = new MixerSession(profiles, new Random());
+            // If the generated pack on disk already matches this profile, nothing is pending.
+            PackGenerator.GeneratedInfo info = PackGenerator.readGeneratedInfo(
+                    resourcePackDirectory().resolve(TextureMixerConstants.GENERATED_PACK_NAME));
+            if (info != null && info.profile().equals(session.activeProfile())
+                    && info.selectionsDigest().equals(session.selections().digest())
+                    && VersionCompat.enabledPackIds(client.getResourcePackManager()).contains(TextureMixerConstants.GENERATED_PACK_ID)) {
+                session.markApplied(session.selections());
+            }
         }
         return session;
     }
@@ -135,6 +145,9 @@ public final class TextureMixerManager {
                 return previous;
             }
             long start = System.nanoTime();
+            if (force) {
+                indexCache.clear();
+            }
             ScanResult result = PackScanner.scan(directory);
             List<PackSource> sources = new ArrayList<>();
             sources.add(vanilla);
@@ -144,7 +157,7 @@ public final class TextureMixerManager {
                 TextureIndex built = new TextureIndexer(VersionCompat.packFormat(),
                         (done, total, name) -> scanStatus = done < total ? "Reading pack " + (done + 1) + "/" + total + ": " + name : "",
                         () -> cancelScan)
-                        .build(sources, result.problems(), fingerprint);
+                        .build(sources, result.problems(), fingerprint, indexCache);
                 Log.LOGGER.info("Texture scan finished in {} ms", (System.nanoTime() - start) / 1_000_000);
                 return built;
             } catch (RuntimeException e) {
