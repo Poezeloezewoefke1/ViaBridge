@@ -18,19 +18,34 @@ changes or overwrites them.
 
 ## Supported versions
 
-| Minecraft      | Folder            | Status |
-|----------------|-------------------|--------|
-| 1.21.11        | `fabric/1.21.11`  | Built, and tested in game in CI |
-| 1.21.4         | `fabric/1.21.4`   | Built, and tested in game in CI |
-| 1.21 - 1.21.1  | `fabric/1.21.1`   | Built in CI; not started in CI (see below) |
-| 1.20.1         | `fabric/1.20.1`   | Built in CI; not started in CI (see below) |
+| Minecraft        | Jar folder         | Built against | In-game test in CI |
+|------------------|--------------------|---------------|--------------------|
+| 1.21.11          | `fabric/1.21.11`   | 1.21.11       | yes |
+| 1.21.9 - 1.21.10 | `fabric/1.21.10`   | 1.21.10       | yes (on 1.21.10) |
+| 1.21.6 - 1.21.8  | `fabric/1.21.8`    | 1.21.8        | yes (on 1.21.8) |
+| 1.21.5           | `fabric/1.21.5`    | 1.21.5        | yes |
+| 1.21.4           | `fabric/1.21.4`    | 1.21.4        | yes |
+| 1.21.2 - 1.21.3  | `fabric/1.21.3`    | 1.21.3        | no |
+| 1.21 - 1.21.1    | `fabric/1.21.1`    | 1.21.1        | no |
+| 1.20.5 - 1.20.6  | `fabric/1.20.6`    | 1.20.6        | no |
+| 1.20.2 - 1.20.4  | `fabric/1.20.4`    | 1.20.4        | no |
+| 1.20 - 1.20.1    | `fabric/1.20.1`    | 1.20.1        | no |
 
-Each Minecraft version gets its own jar. Fabric's in-game test API only exists from
-1.21.4 on, so CI can't start the 1.21.1 and 1.20.1 builds. Those two compile against
-their own Minecraft version and run the same shared code that is tested on 1.21.4 and
-1.21.11, but nobody has started them in a real game yet. Versions in between (1.20.2 -
-1.20.6, 1.21.2 - 1.21.3, 1.21.5 - 1.21.10) and 26.1 have no build yet. See "Porting to
-another version"; most of them only need a new `VersionCompat`.
+Pick the jar whose range contains your Minecraft version. Every jar is compiled against
+the Minecraft version in the "Built against" column.
+
+What has and hasn't been verified:
+- **In-game tested** jars were started in a real game in CI. The test drives the actual
+  screens and checks that Minecraft loads the picked textures (see "Testing").
+- Fabric's in-game test API doesn't exist before 1.21.4, so the **1.21.3 and older**
+  jars are compiled but have not been started in CI. They run the same shared code as
+  the tested jars, with a different small `VersionCompat` layer.
+- Where a jar covers a range, it was only compiled and tested against the newest
+  version in that range. `fabric.mod.json` also allows the older versions in the
+  range, because hotfix releases normally keep the same game APIs. That is an
+  expectation, not something that was checked.
+- Not supported: anything before 1.20 (no `DrawContext`), and 26.1+ (Mojang's own names
+  replace Yarn there, so it needs a separate port).
 
 Requires [Fabric Loader](https://fabricmc.net/use/) and [Fabric API](https://modrinth.com/mod/fabric-api).
 
@@ -138,8 +153,8 @@ Pushing a `v*` tag also publishes them as a GitHub release.
   ZIPs, overlays), indexing, pack generation (folder and ZIP), refusing to overwrite
   foreign packs, profiles (including a corrupt file), undo/redo, filtering and
   randomize.
-- `fabric/1.21.4/src/gametest` and `fabric/1.21.11/src/gametest`: a Fabric client game
-  test that starts the real game under a virtual display. It installs test packs, opens the vanilla Resource Packs
+- `fabric/<version>/src/gametest` (1.21.4, 1.21.5, 1.21.8, 1.21.10, 1.21.11): a Fabric
+  client game test that starts the real game under a virtual display. It installs test packs, opens the vanilla Resource Packs
   screen, presses **Mix Textures**, picks textures, presses **Apply**, and then checks
   that Minecraft actually loads those textures from the generated pack. It also covers
   undo/redo, profiles and export, and checks that closing the pack screen keeps the
@@ -169,13 +184,14 @@ fabric/<version>/           One Gradle project per Minecraft version
   gradle.properties         Minecraft, Yarn, Fabric API, Java versions
   .../compat/VersionCompat  The calls that differ between versions
   src/gametest/             In-game client test (1.21.4 and newer)
+fabric/<version>/.../VersionCompat
+                            Pack format, identifiers, texture drawing, background,
+                            enabled pack ids, dynamic textures
 ```
 
 ## Porting to another version
 
-1. Copy the closest existing module (`fabric/1.21.4` for 1.21.2 - 1.21.8,
-   `fabric/1.21.11` for 1.21.9+, `fabric/1.20.1` or `fabric/1.21.1` for older) to
-   `fabric/<new version>`. `settings.gradle.kts` picks it up automatically.
+1. Copy the closest existing module to `fabric/<new version>`. `settings.gradle.kts` picks it up automatically.
 2. Update its `gradle.properties` (Minecraft, Yarn, Fabric API, Java, dependency range).
    The versions that exist are listed in Fabric's Maven metadata.
 3. Fix `VersionCompat` for that version: pack format, identifier creation, texture
