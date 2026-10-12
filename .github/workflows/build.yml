@@ -19,7 +19,7 @@ jobs:
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v4
       - name: Test core
-        run: ./gradlew -PcoreOnly :core:test --stacktrace
+        run: ./gradlew -PcoreOnly :core:test
 
   fabric:
     name: Minecraft ${{ matrix.mc }}
@@ -47,16 +47,8 @@ jobs:
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Show published Fabric versions for this Minecraft version
-        run: |
-          mc="${{ matrix.mc }}"
-          echo "fabric-api: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -oE "<version>[^<]*\+$mc</version>" | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
-          echo "yarn: $(curl -s https://maven.fabricmc.net/net/fabricmc/yarn/maven-metadata.xml | grep -oE "<version>$mc\+build\.[0-9]+</version>" | sed 's/<[^>]*>//g' | tail -2 | tr '\n' ' ')"
-          echo "loader: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml | grep -oE '<release>[^<]*' | sed 's/<release>//')"
-          echo "loom: $(curl -s https://maven.fabricmc.net/fabric-loom/fabric-loom.gradle.plugin/maven-metadata.xml | grep -oE '<version>1\.[0-9]+-SNAPSHOT</version>' | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
-
       - name: Build mod jar
-        run: ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:build --stacktrace
+        run: ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:build
 
       - name: Check jar contents
         run: |
@@ -75,7 +67,7 @@ jobs:
 
       - name: Run in-game tests
         if: matrix.gametest
-        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:runClientGameTest --stacktrace
+        run: xvfb-run -a -s "-screen 0 1280x720x24" ./gradlew -Pmc=${{ matrix.mc }} :fabric-${{ matrix.mc }}:runClientGameTest
 
       # Screenshots are also printed (small JPEGs, base64) so they can be checked from the log.
       - name: Print game test screenshots
@@ -108,6 +100,15 @@ jobs:
             fabric/${{ matrix.mc }}/build/run/clientGameTest/screenshots/
             fabric/${{ matrix.mc }}/build/run/clientGameTest/logs/latest.log
           if-no-files-found: ignore
+
+      - name: Show published Fabric versions for this Minecraft version
+        if: always()
+        run: |
+          mc="${{ matrix.mc }}"
+          echo "fabric-api: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml | grep -oE "<version>[^<]*\+$mc</version>" | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
+          echo "yarn: $(curl -s https://maven.fabricmc.net/net/fabricmc/yarn/maven-metadata.xml | grep -oE "<version>$mc\+build\.[0-9]+</version>" | sed 's/<[^>]*>//g' | tail -2 | tr '\n' ' ')"
+          echo "loader: $(curl -s https://maven.fabricmc.net/net/fabricmc/fabric-loader/maven-metadata.xml | grep -oE '<release>[^<]*' | sed 's/<release>//')"
+          echo "loom: $(curl -s https://maven.fabricmc.net/fabric-loom/fabric-loom.gradle.plugin/maven-metadata.xml | grep -oE '<version>1\.[0-9]+-SNAPSHOT</version>' | sed 's/<[^>]*>//g' | tail -3 | tr '\n' ' ')"
 
   release:
     name: Publish release
