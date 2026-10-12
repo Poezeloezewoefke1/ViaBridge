@@ -511,7 +511,7 @@ public class TextureMixerScreen extends InputScreen {
                 color = GuiDraw.GRAY;
             } else {
                 int packs = Math.max(0, index.sources().size() - 1);
-                line = Text.translatable("texturemixer.status.summary", index.size(), packs, session.selections().size());
+                line = Text.translatable("texturemixer.status.summary", session.visible().size(), packs, session.selections().size());
                 color = GuiDraw.GRAY;
             }
         }

@@ -56,7 +56,7 @@ Other buttons:
 - **Reset All** clears every pick in the current profile.
 - **Randomize** picks a random version for every texture currently listed. Use the
   search and tabs to limit what it touches.
-- **Export ZIP** saves the current profile as a normal `.zip` resource pack in
+- **Export** saves the current profile as a normal `.zip` resource pack in
   `.minecraft/texturemixer/exports/`.
 - **Profile: …** opens the profile list, where you can switch, create, duplicate, rename
   or delete profiles. Each profile keeps its own picks. Picks are saved automatically to

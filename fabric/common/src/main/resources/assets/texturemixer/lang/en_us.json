@@ -31,7 +31,7 @@
   "texturemixer.reset.tooltip": "Clear every pick in this profile, so all textures go back to whatever your enabled packs show. Can be undone.",
   "texturemixer.randomize": "Randomize",
   "texturemixer.randomize.tooltip": "Pick a random version for every texture currently listed. Can be undone.",
-  "texturemixer.export": "Export ZIP",
+  "texturemixer.export": "Export",
   "texturemixer.export.tooltip": "Save this profile as a normal .zip resource pack in .minecraft/texturemixer/exports.",
   "texturemixer.export.done.title": "Pack exported",
   "texturemixer.export.done.message": "Saved \"%s\" with %s texture(s). Open the exports folder?",
@@ -57,7 +57,7 @@
   "texturemixer.empty.no_changes": "You have not picked any textures in this profile yet.",
   "texturemixer.empty.no_match": "No textures match your search.",
 
-  "texturemixer.status.summary": "%s textures from %s pack(s) - %s picked",
+  "texturemixer.status.summary": "%s listed - %s pack(s) found - %s picked",
   "texturemixer.status.applying": "Building and applying the pack...",
   "texturemixer.status.applied": "Applied %s texture(s).",
   "texturemixer.status.apply_failed": "Apply failed: %s",
