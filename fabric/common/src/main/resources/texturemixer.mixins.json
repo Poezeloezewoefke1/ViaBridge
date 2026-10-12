@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.texturemixer.fabric.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "PackScreenAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

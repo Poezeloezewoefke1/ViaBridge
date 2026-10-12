@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "texturemixer",
+  "version": "${version}",
+  "name": "Texture Mixer",
+  "description": "Pick individual textures from any of your installed resource packs and combine them into one custom pack, right from the Resource Packs screen.",
+  "authors": ["Texture Mixer contributors"],
+  "license": "MIT",
+  "icon": "assets/texturemixer/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.texturemixer.fabric.TextureMixerClient"]
+  },
+  "mixins": [
+    { "config": "texturemixer.mixins.json", "environment": "client" }
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_dependency}",
+    "java": ">=${java_release}"
+  }
+}
